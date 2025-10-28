@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE; // e.g. http://13.201.227.67:500
 // 1️⃣ Get all makes
 export async function fetchMakes() {
   try {
-    const res = await fetch(`${API_BASE}/api/wheelsize/makes`);
+    const res = await fetch(`${API_BASE}/wheelsize/makes`);
     if (!res.ok) throw new Error("Failed to fetch makes");
     const data = await res.json();
     // Handle both array and nested structure
@@ -22,7 +22,7 @@ export async function fetchMakes() {
 // 2️⃣ Get models for a given make
 export async function fetchModels(make) {
   try {
-    const res = await fetch(`${API_BASE}/api/wheelsize/models/${encodeURIComponent(make)}`);
+    const res = await fetch(`${API_BASE}/wheelsize/models/${encodeURIComponent(make)}`);
     if (!res.ok) throw new Error("Failed to fetch models");
     const data = await res.json();
     if (Array.isArray(data)) return data.map((m) => m.name || m);
@@ -38,7 +38,7 @@ export async function fetchModels(make) {
 export async function fetchYears(make, model) {
   try {
     const res = await fetch(
-      `${API_BASE}/api/wheelsize/years/${encodeURIComponent(make)}/${encodeURIComponent(model)}`
+      `${API_BASE}/wheelsize/years/${encodeURIComponent(make)}/${encodeURIComponent(model)}`
     );
     if (!res.ok) throw new Error("Failed to fetch years");
     const data = await res.json();
