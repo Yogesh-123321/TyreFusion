@@ -1,3 +1,4 @@
+// src/pages/Home.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,12 +7,13 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
-// API helpers
+// API helpers you already have
 import { fetchVariants, fetchFitments } from "@/api/wheelSize";
 import { fetchMakes, fetchModels, fetchYears } from "@/api/wheelSizeBasic";
 
-// ✅ Use environment variable for backend API base
-const API_BASE = import.meta.env.VITE_API_BASE;
+// ✅ Use environment variable instead of hardcoding localhost
+// This allows automatic switching between local + Render
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 /* -------------------------
    Small reusable Combobox
@@ -29,6 +31,7 @@ function Combobox({
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
 
+  // Filter items by query (case-insensitive)
   const filtered = useMemo(() => {
     if (!query) return items;
     const q = query.toLowerCase();
@@ -118,17 +121,14 @@ export default function Home() {
   const [years, setYears] = useState([]);
   const [variants, setVariants] = useState([]);
   const [sizes, setSizes] = useState([]);
-
   const [selectedMake, setSelectedMake] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
-
   const [width, setWidth] = useState("");
   const [aspect, setAspect] = useState("");
   const [rim, setRim] = useState("");
-
   const [tyres, setTyres] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -185,20 +185,14 @@ export default function Home() {
     setSelectedModel(model);
     setSelectedYear(null);
     setSelectedVariant(null);
-    setSelectedSize(null);
     setVariants([]);
-    setSizes([]);
     setTyres([]);
 
     if (!selectedMake || !model) return;
     setLoading(true);
     try {
       const data = await fetchYears(selectedMake, model);
-      setYears(
-        Array.isArray(data) && data.length
-          ? data
-          : [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-      );
+      setYears(Array.isArray(data) && data.length ? data : [2018, 2019, 2020, 2021, 2022, 2023, 2024]);
     } catch {
       setYears([2018, 2019, 2020, 2021, 2022, 2023, 2024]);
     } finally {
@@ -209,9 +203,7 @@ export default function Home() {
   async function onYearSelect(year) {
     setSelectedYear(year);
     setSelectedVariant(null);
-    setSelectedSize(null);
     setVariants([]);
-    setSizes([]);
     setTyres([]);
 
     if (!selectedMake || !selectedModel || !year) return;
@@ -235,15 +227,8 @@ export default function Home() {
     if (!selectedMake || !selectedModel || !selectedYear || !slug) return;
     setLoading(true);
     try {
-      const fitments = await fetchFitments(
-        selectedMake,
-        selectedModel,
-        selectedYear,
-        slug
-      );
-      const sizeList = Array.isArray(fitments)
-        ? fitments
-        : fitments?.sizes || [];
+      const fitments = await fetchFitments(selectedMake, selectedModel, selectedYear, slug);
+      const sizeList = Array.isArray(fitments) ? fitments : fitments?.sizes || [];
       setSizes(sizeList || []);
       if (!Array.isArray(fitments) && fitments?.tyres) setTyres(fitments.tyres);
     } catch {
@@ -259,9 +244,7 @@ export default function Home() {
     if (!size) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/tyres?size=${encodeURIComponent(size)}`
-      );
+      const res = await fetch(`${API_BASE}/tyres?size=${encodeURIComponent(size)}`);
       const data = await res.json();
       setTyres(data || []);
     } catch {
@@ -287,9 +270,7 @@ export default function Home() {
     setLoading(true);
     setTyres([]);
     try {
-      const res = await fetch(
-        `${API_BASE}/tyres?size=${encodeURIComponent(sizeStr)}`
-      );
+      const res = await fetch(`${API_BASE}/tyres?size=${encodeURIComponent(sizeStr)}`);
       const data = await res.json();
       setTyres(data || []);
     } catch {
@@ -318,7 +299,7 @@ export default function Home() {
   }
 
   /* -------------------------
-     Resets
+     Reset
   --------------------------*/
   const resetPage = () => window.location.reload();
   const resetForm = () => {
@@ -340,48 +321,21 @@ export default function Home() {
     setLoading(false);
   };
 
-  /* -------------------------
-     Render
-  --------------------------*/
-  const handleNumericInputKeyDown = (e) => {
-    const keysToKeep = new Set([
-      "Backspace",
-      "Delete",
-      "ArrowLeft",
-      "ArrowRight",
-      "ArrowUp",
-      "ArrowDown",
-      "Enter",
-      "Home",
-      "End",
-    ]);
-    if (keysToKeep.has(e.key)) e.stopPropagation();
-  };
-
   return (
     <>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold text-center">Tyre Finder</h1>
-
         {/* Tabs */}
         <div className="flex items-center gap-3 justify-center">
           <button
             onClick={() => setTab("car")}
-            className={`px-4 py-2 rounded-md ${
-              tab === "car"
-                ? "bg-orange-600 text-white"
-                : "bg-gray-100 dark:bg-gray-800"
-            }`}
+            className={`px-4 py-2 rounded-md ${tab === "car" ? "bg-orange-600 text-white" : "bg-gray-100 dark:bg-gray-800"}`}
           >
             Search by Car
           </button>
           <button
             onClick={() => setTab("size")}
-            className={`px-4 py-2 rounded-md ${
-              tab === "size"
-                ? "bg-orange-600 text-white"
-                : "bg-gray-100 dark:bg-gray-800"
-            }`}
+            className={`px-4 py-2 rounded-md ${tab === "size" ? "bg-orange-600 text-white" : "bg-gray-100 dark:bg-gray-800"}`}
           >
             Search by Tyre Size
           </button>
@@ -402,65 +356,85 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Card */}
+        {/* Car Search or Tyre Size */}
         <Card className="p-6 bg-white dark:bg-gray-900 border shadow-sm">
-          {loading && (
-            <div className="mb-4">
-              <Loader />
-            </div>
-          )}
+          {loading && <div className="mb-4"><Loader /></div>}
           {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
 
-          {/* Car Search */}
           {tab === "car" ? (
-            <>
-              {/* Car-based form */}
-              {/* same as before */}
-            </>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium mb-1">Make</label>
+                <Combobox
+                  items={makes}
+                  value={selectedMake}
+                  onChange={onMakeSelect}
+                  placeholder="Select Make"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Model</label>
+                <Combobox
+                  items={models}
+                  value={selectedModel}
+                  onChange={onModelSelect}
+                  placeholder="Select Model"
+                  disabled={!selectedMake}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Year</label>
+                <Combobox
+                  items={years}
+                  value={selectedYear}
+                  onChange={onYearSelect}
+                  placeholder="Select Year"
+                  itemToString={(y) => String(y)}
+                  disabled={!selectedModel}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Variant</label>
+                <Combobox
+                  items={variants.map(v => ({ label: v.name + (v.fuel ? ` (${v.fuel})` : ""), value: v.slug }))}
+                  value={variants.find(v => v.slug === selectedVariant) || null}
+                  itemToString={(it) => (it ? it.label : "")}
+                  onChange={(sel) => onVariantSelect(sel?.value)}
+                  placeholder="Select Variant"
+                  disabled={!selectedYear}
+                />
+              </div>
+            </div>
           ) : (
-            // Size Search Tab
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium mb-1">Width</label>
                 <input
                   type="number"
                   value={width}
-                  onChange={(e) =>
-                    setWidth(e.target.value.replace(/[^\d]/g, ""))
-                  }
+                  onChange={(e) => setWidth(e.target.value.replace(/[^\d]/g, ""))}
                   className="w-full border px-3 py-2 rounded-md bg-white dark:bg-gray-800"
                   placeholder="e.g. 195"
-                  onKeyDown={handleNumericInputKeyDown}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Aspect Ratio
-                </label>
+                <label className="block text-sm font-medium mb-1">Aspect Ratio</label>
                 <input
                   type="number"
                   value={aspect}
-                  onChange={(e) =>
-                    setAspect(e.target.value.replace(/[^\d]/g, ""))
-                  }
+                  onChange={(e) => setAspect(e.target.value.replace(/[^\d]/g, ""))}
                   className="w-full border px-3 py-2 rounded-md bg-white dark:bg-gray-800"
                   placeholder="e.g. 60"
-                  onKeyDown={handleNumericInputKeyDown}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Rim (inch)
-                </label>
+                <label className="block text-sm font-medium mb-1">Rim (inch)</label>
                 <input
                   type="number"
                   value={rim}
-                  onChange={(e) =>
-                    setRim(e.target.value.replace(/[^\d]/g, ""))
-                  }
+                  onChange={(e) => setRim(e.target.value.replace(/[^\d]/g, ""))}
                   className="w-full border px-3 py-2 rounded-md bg-white dark:bg-gray-800"
                   placeholder="e.g. 15"
-                  onKeyDown={handleNumericInputKeyDown}
                 />
               </div>
               <div>
@@ -472,18 +446,16 @@ export default function Home() {
           )}
         </Card>
 
-        {/* Tyre Results */}
+        {/* Results */}
         <section>
           <h2 className="text-2xl font-semibold mb-4">
             Results {selectedSize ? `for ${selectedSize}` : ""}
           </h2>
-
           {!loading && tyres.length === 0 && (
             <div className="text-center text-gray-500 italic">
               No tyres to show — select a size or search above.
             </div>
           )}
-
           <div className="grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-6 mt-4">
             {tyres.map((tyre, i) => (
               <Card key={tyre._id || i} className="p-4">
@@ -520,8 +492,6 @@ export default function Home() {
           </div>
         </section>
       </div>
-
-      {/* ✅ Floating WhatsApp Chat Button */}
       <FloatingWhatsAppButton />
     </>
   );
