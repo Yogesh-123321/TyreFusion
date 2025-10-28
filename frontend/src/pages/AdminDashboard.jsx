@@ -29,16 +29,19 @@ export default function AdminDashboard() {
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
 
+  // ✅ Use environment variable for API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   useEffect(() => {
     if (token) {
-      fetch("http://localhost:5000/api/admin/stats", {
+      fetch(`${API_BASE}/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => res.json())
         .then((data) => setStats(data))
         .catch(() => console.error("Failed to fetch admin stats"));
     }
-  }, [token]);
+  }, [token, API_BASE]);
 
   const chartData = [
     { name: "Tyres", value: stats?.totalTyres || 0 },
@@ -75,7 +78,7 @@ export default function AdminDashboard() {
             TyreFusion Admin
           </h1>
 
-          {/* Scrollable navigation section only */}
+          {/* Scrollable navigation section */}
           <nav className="space-y-4 overflow-y-auto no-scrollbar flex-1 pr-1">
             <SidebarButton
               label="Dashboard"
@@ -108,7 +111,7 @@ export default function AdminDashboard() {
           </nav>
         </div>
 
-        {/* Fixed footer section */}
+        {/* Sidebar Footer */}
         <div className="space-y-4 mt-4">
           {/* Theme Toggle */}
           <button
@@ -119,10 +122,14 @@ export default function AdminDashboard() {
                 : "bg-orange-200/70 hover:bg-orange-300/80 text-gray-800"
             }`}
           >
-            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {darkMode ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
           </button>
 
-          {/* Logout */}
+          {/* Logout Button */}
           <Button
             onClick={logout}
             className={`w-full flex items-center justify-center gap-2 backdrop-blur-md ${
@@ -193,11 +200,18 @@ export default function AdminDashboard() {
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#444" : "#ddd"} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={darkMode ? "#444" : "#ddd"}
+                    />
                     <XAxis dataKey="name" stroke={darkMode ? "#ccc" : "#555"} />
                     <YAxis stroke={darkMode ? "#ccc" : "#555"} />
                     <Tooltip />
-                    <Bar dataKey="value" fill={darkMode ? "#f97316" : "#fb923c"} barSize={50} />
+                    <Bar
+                      dataKey="value"
+                      fill={darkMode ? "#f97316" : "#fb923c"}
+                      barSize={50}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

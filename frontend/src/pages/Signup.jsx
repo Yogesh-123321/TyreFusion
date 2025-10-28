@@ -17,6 +17,9 @@ export default function Signup() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // ✅ Use environment variable for backend API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -28,7 +31,8 @@ export default function Signup() {
     setSuccess("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      // ✅ Dynamic API endpoint (works on localhost & Render)
+      const response = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

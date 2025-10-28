@@ -16,6 +16,9 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // ✅ Use environment variable for backend API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -27,7 +30,8 @@ export default function Login() {
     setSuccess("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      // ✅ Dynamic API endpoint (works on both localhost & Render)
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -36,18 +40,17 @@ export default function Login() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Login failed");
 
-      // Save token and user to context
+      // Save token and user in context
       login(data.user, data.token);
 
       setSuccess("Login successful! Redirecting...");
       setTimeout(() => {
-  if (data.user.role === "admin") {
-    navigate("/admin");
-  } else {
-    navigate("/");
-  }
-}, 1000);
-
+        if (data.user.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      }, 1000);
     } catch (err) {
       setError(err.message);
     } finally {

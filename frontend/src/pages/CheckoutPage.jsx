@@ -19,28 +19,39 @@ export default function CheckoutPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  // total (unit price * qty)
-  const total = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+  // ✅ Use environment variable for API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
 
-  // helper to extract tyre id safely from different cart shapes
+  // total (unit price * qty)
+  const total = cart.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+    0
+  );
+
+  // helper to extract tyre id safely
   const resolveTyreId = (item) => {
     if (!item) return null;
     if (item._id) return item._id;
     if (item.tyre && typeof item.tyre === "string") return item.tyre;
-    if (item.tyre && typeof item.tyre === "object") return item.tyre._id || item.tyre.id || null;
+    if (item.tyre && typeof item.tyre === "object")
+      return item.tyre._id || item.tyre.id || null;
     if (item.id) return item.id;
     if (item.sku) return item.sku;
     return null;
   };
 
-  // helper to fetch tyre by id to get size if missing
+  // helper to fetch tyre by id for missing size
   const fetchTyreById = async (id) => {
     if (!id) return null;
     try {
-      const resp = await axios.get(`http://localhost:5000/api/tyres/by-id/${id}`);
+      const resp = await axios.get(`${API_BASE}/tyres/by-id/${id}`);
       return resp.data;
     } catch (e) {
-      console.warn("Failed to fetch tyre by id for size resolution:", id, e.message);
+      console.warn(
+        "Failed to fetch tyre by id for size resolution:",
+        id,
+        e.message
+      );
       return null;
     }
   };
@@ -80,26 +91,31 @@ export default function CheckoutPage() {
               _id: tyreId,
               brand: item.brand || item.tyre?.brand || "",
               title: item.title || item.tyre?.title || "",
-              size: size || "", // ensure size field exists (may be empty string)
-              price: Number(item.price || (item.tyre && item.tyre.price) || 0),
+              size: size || "", // ensure size field exists
+              price: Number(item.price || item.tyre?.price || 0),
             },
             quantity: Number(item.quantity || 1),
-            price: Number(item.price || (item.tyre && item.tyre.price) || 0) * Number(item.quantity || 1),
+            price:
+              Number(item.price || item.tyre?.price || 0) *
+              Number(item.quantity || 1),
           };
         })
       );
 
-      // debug: inspect payload before sending
+      // debug: inspect payload
       console.log("ORDER PAYLOAD ITEMS:", formattedItems);
 
       // sanity check
-      const hasInvalidItems = formattedItems.some((it) => !it.tyre || !it.tyre._id);
+      const hasInvalidItems = formattedItems.some(
+        (it) => !it.tyre || !it.tyre._id
+      );
       if (hasInvalidItems) {
         throw new Error("Invalid cart items — missing tyre ID");
       }
 
+      // ✅ Create order via backend
       const res = await axios.post(
-        "http://localhost:5000/api/orders",
+        `${API_BASE}/orders`,
         {
           items: formattedItems,
           totalAmount: total,
@@ -127,19 +143,25 @@ export default function CheckoutPage() {
 
   if (cart.length === 0)
     return (
-      <div className="text-center mt-20 text-gray-500">🛒 Your cart is empty</div>
+      <div className="text-center mt-20 text-gray-500">
+        🛒 Your cart is empty
+      </div>
     );
 
   return (
     <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-orange-500 text-center">Checkout</h1>
+      <h1 className="text-3xl font-bold mb-6 text-orange-500 text-center">
+        Checkout
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {Object.keys(form).map((field) => (
           <input
             key={field}
             type="text"
-            placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+            placeholder={
+              field.charAt(0).toUpperCase() + field.slice(1).replace("_", " ")
+            }
             value={form[field]}
             onChange={(e) => setForm({ ...form, [field]: e.target.value })}
             required

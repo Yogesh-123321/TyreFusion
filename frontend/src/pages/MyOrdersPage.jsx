@@ -8,16 +8,21 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Use environment variable for API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   useEffect(() => {
     if (!token) return;
     axios
-      .get("http://localhost:5000/api/orders/my-orders", {
+      .get(`${API_BASE}/orders/my-orders`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setOrders(res.data))
-      .catch(() => console.error("Failed to fetch user orders"))
+      .catch((err) => {
+        console.error("Failed to fetch user orders:", err);
+      })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, API_BASE]);
 
   if (!token)
     return (
@@ -40,21 +45,28 @@ export default function MyOrdersPage() {
       </h1>
 
       {orders.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center">No orders found.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center">
+          No orders found.
+        </p>
       ) : (
         <div className="grid gap-4">
           {orders.map((order) => (
-            // OUTER WRAPPER controls the visible background so it always matches theme
             <div
               key={order._id}
               className="rounded-lg overflow-hidden bg-white dark:bg-slate-900 dark:border-slate-700 border border-orange-200"
             >
-              {/* Keep Card inside but make it transparent so wrapper shows through */}
+              {/* Transparent Card to match theme */}
               <Card className="bg-transparent shadow-none">
                 <CardContent className="p-4">
-                  <p className="text-sm text-gray-400 dark:text-gray-400">Order ID: {order._id}</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">Total: ₹{order.totalAmount}</p>
-                  <p className="text-gray-700 dark:text-gray-300">Status: {order.status}</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-400">
+                    Order ID: {order._id}
+                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    Total: ₹{order.totalAmount}
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    Status: {order.status}
+                  </p>
                   <p className="text-gray-700 dark:text-gray-300">
                     Date: {new Date(order.createdAt).toLocaleString()}
                   </p>
@@ -70,11 +82,21 @@ export default function MyOrdersPage() {
 
                         return (
                           <li key={key} className="mb-1">
-                            <span className="font-medium text-gray-900 dark:text-white">{brand}</span>{" "}
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {brand}
+                            </span>{" "}
                             {title ? `(${title})` : ""}{" "}
-                            <span className="text-sm text-gray-500 dark:text-gray-400">— Size: {displaySize}</span>{" "}
-                            × <span className="text-gray-700 dark:text-gray-300">{item.quantity}</span> —{" "}
-                            <span className="text-gray-700 dark:text-gray-300">₹{item.price}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              — Size: {displaySize}
+                            </span>{" "}
+                            ×{" "}
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {item.quantity}
+                            </span>{" "}
+                            —{" "}
+                            <span className="text-gray-700 dark:text-gray-300">
+                              ₹{item.price}
+                            </span>
                           </li>
                         );
                       })}

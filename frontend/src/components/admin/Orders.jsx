@@ -22,13 +22,16 @@ const Orders = ({ darkMode }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null); // ✅ for dialog
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const token = localStorage.getItem("token");
+
+  // ✅ Use environment variable for API base
+  const API_BASE = import.meta.env.VITE_API_BASE;
 
   // Fetch Orders
   const fetchOrders = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/orders", {
+      const res = await axios.get(`${API_BASE}/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (Array.isArray(res.data)) setOrders(res.data);
@@ -43,7 +46,7 @@ const Orders = ({ darkMode }) => {
   const updateStatus = async (id, status) => {
     try {
       await axios.put(
-        `http://localhost:5000/api/orders/${id}/status`,
+        `${API_BASE}/orders/${id}/status`,
         { status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -74,7 +77,6 @@ const Orders = ({ darkMode }) => {
 
       {Array.isArray(orders) && orders.length > 0 ? (
         orders.map((order) => {
-          // Collect unique sizes from items (safe fallback)
           const sizes = Array.from(
             new Set(
               (order.items || [])
@@ -112,8 +114,6 @@ const Orders = ({ darkMode }) => {
                     </span>
                   </p>
                   <p>Created: {new Date(order.createdAt).toLocaleString()}</p>
-
-                  {/* NEW: Sizes summary line */}
                   <p className="mt-2 text-sm text-gray-400">
                     <span className="font-semibold text-gray-300">Sizes:</span>{" "}
                     {sizes.length ? sizes.join(", ") : "—"}
@@ -184,7 +184,9 @@ const Orders = ({ darkMode }) => {
       {/* 🧾 Order Details Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
         <DialogContent
-          className={`max-w-lg ${darkMode ? "bg-gray-950 text-white" : "bg-white text-gray-900"}`}
+          className={`max-w-lg ${
+            darkMode ? "bg-gray-950 text-white" : "bg-white text-gray-900"
+          }`}
         >
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-orange-500">
@@ -222,7 +224,6 @@ const Orders = ({ darkMode }) => {
                 {new Date(selectedOrder.createdAt).toLocaleString()}
               </p>
 
-              {/* Shipping */}
               {selectedOrder.shippingAddress && (
                 <div>
                   <h4 className="font-semibold mt-2 text-orange-400">
@@ -239,16 +240,13 @@ const Orders = ({ darkMode }) => {
                 </div>
               )}
 
-              {/* Items */}
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mt-2 text-orange-400">
-                    Items
-                  </h4>
+                  <h4 className="font-semibold mt-2 text-orange-400">Items</h4>
                   <ul className="list-disc list-inside">
                     {selectedOrder.items.map((item, idx) => {
-                      // safe displaySize: tyre.size -> item.size -> empty
-                      const displaySize = (item.tyre?.size || item.size || "").trim() || "—";
+                      const displaySize =
+                        (item.tyre?.size || item.size || "").trim() || "—";
                       const title = item.tyre?.title || "";
                       const brand = item.tyre?.brand || "";
                       const key = item._id || `${selectedOrder._id}-item-${idx}`;
@@ -257,8 +255,10 @@ const Orders = ({ darkMode }) => {
                         <li key={key} className="mb-1">
                           <span className="font-medium">{brand}</span>{" "}
                           {title ? `(${title})` : ""}{" "}
-                          <span className="text-sm text-gray-400">— Size: {displaySize}</span>
-                          {" "}× {item.quantity} — ₹{item.price}
+                          <span className="text-sm text-gray-400">
+                            — Size: {displaySize}
+                          </span>{" "}
+                          × {item.quantity} — ₹{item.price}
                         </li>
                       );
                     })}

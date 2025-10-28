@@ -1,4 +1,3 @@
-// src/components/admin/TyreManager.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,9 @@ export default function TyreManager({ darkMode }) {
   });
   const [editingTyre, setEditingTyre] = useState(null);
 
+  // 🔸 Environment variable for API base URL
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   // --- Search panel state
   const [sizeQuery, setSizeQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -36,7 +38,7 @@ export default function TyreManager({ darkMode }) {
 
   const refreshTyres = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/tyres", {
+      const res = await fetch(`${API_BASE}/admin/tyres`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -48,7 +50,7 @@ export default function TyreManager({ darkMode }) {
 
   const handleAdd = async () => {
     try {
-      await fetch("http://localhost:5000/api/admin/tyres", {
+      await fetch(`${API_BASE}/admin/tyres`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,7 +68,7 @@ export default function TyreManager({ darkMode }) {
   const handleDelete = async (id) => {
     if (!confirm("Delete this tyre?")) return;
     try {
-      await fetch(`http://localhost:5000/api/admin/tyres/${id}`, {
+      await fetch(`${API_BASE}/admin/tyres/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -82,7 +84,7 @@ export default function TyreManager({ darkMode }) {
   const handleEditSave = async () => {
     if (!editingTyre) return;
     try {
-      await fetch(`http://localhost:5000/api/admin/tyres/${editingTyre._id}`, {
+      await fetch(`${API_BASE}/admin/tyres/${editingTyre._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +94,9 @@ export default function TyreManager({ darkMode }) {
       });
       setEditingTyre(null);
       refreshTyres();
-      setSearchResults((prev) => prev.map((r) => (r._id === editingTyre._id ? editingTyre : r)));
+      setSearchResults((prev) =>
+        prev.map((r) => (r._id === editingTyre._id ? editingTyre : r))
+      );
     } catch (err) {
       console.error("Failed to update tyre", err);
     }
@@ -106,7 +110,7 @@ export default function TyreManager({ darkMode }) {
     }
 
     setSearchLoading(true);
-    fetch(`http://localhost:5000/api/tyres?size=${encodeURIComponent(query)}`)
+    fetch(`${API_BASE}/tyres?size=${encodeURIComponent(query)}`)
       .then((r) => r.json())
       .then((data) => {
         setSearchResults(Array.isArray(data) ? data : []);
@@ -132,7 +136,11 @@ export default function TyreManager({ darkMode }) {
 
   return (
     <div className="flex flex-col w-full">
-      <h3 className={`text-2xl font-bold mb-4 ${darkMode ? "text-orange-400" : "text-orange-600"}`}>
+      <h3
+        className={`text-2xl font-bold mb-4 ${
+          darkMode ? "text-orange-400" : "text-orange-600"
+        }`}
+      >
         🛞 Manage Tyres
       </h3>
 
@@ -146,7 +154,10 @@ export default function TyreManager({ darkMode }) {
               onChange={(e) => onSizeInput(e.target.value)}
               className="w-full"
             />
-            <Button onClick={handleSizeSearchSubmit} className="bg-orange-600 hover:bg-orange-700 text-white">
+            <Button
+              onClick={handleSizeSearchSubmit}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
               Search
             </Button>
             <Button
@@ -163,10 +174,16 @@ export default function TyreManager({ darkMode }) {
         </form>
 
         <div className="mt-3">
-          {searchLoading && <p className="text-sm text-muted-foreground">Searching...</p>}
-          {!searchLoading && searchResults.length === 0 && sizeQuery.trim().length >= 3 && (
-            <p className="text-sm text-muted-foreground">No tyres found for "{sizeQuery}".</p>
+          {searchLoading && (
+            <p className="text-sm text-muted-foreground">Searching...</p>
           )}
+          {!searchLoading &&
+            searchResults.length === 0 &&
+            sizeQuery.trim().length >= 3 && (
+              <p className="text-sm text-muted-foreground">
+                No tyres found for "{sizeQuery}".
+              </p>
+            )}
         </div>
 
         {searchResults.length > 0 && (
@@ -177,15 +194,23 @@ export default function TyreManager({ darkMode }) {
                 className="p-4 rounded-lg border bg-white/5"
               >
                 <div className="flex items-start gap-4">
-                  <img src={tyre.image || "/tyre.png"} alt="tyre" className="w-20 h-20 object-contain" />
+                  <img
+                    src={tyre.image || "/tyre.png"}
+                    alt="tyre"
+                    className="w-20 h-20 object-contain"
+                  />
                   <div className="flex-1">
                     <h4 className="font-semibold">
                       {tyre.brand} {tyre.title}
                     </h4>
-                    <div className="text-sm text-muted-foreground">{tyre.size}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {tyre.size}
+                    </div>
                     <div className="mt-2 flex items-center gap-3">
                       <div className="font-semibold">₹{tyre.price}</div>
-                      <div className="text-xs">Warranty: {tyre.warranty_months || "—"} mo</div>
+                      <div className="text-xs">
+                        Warranty: {tyre.warranty_months || "—"} mo
+                      </div>
                     </div>
 
                     <div className="mt-3 flex gap-2">
@@ -195,7 +220,10 @@ export default function TyreManager({ darkMode }) {
                       >
                         Edit
                       </Button>
-                      <Button onClick={() => handleDelete(tyre._id)} variant="destructive">
+                      <Button
+                        onClick={() => handleDelete(tyre._id)}
+                        variant="destructive"
+                      >
                         Delete
                       </Button>
                     </div>
@@ -215,11 +243,16 @@ export default function TyreManager({ darkMode }) {
               key={key}
               placeholder={key.replace("_", " ")}
               value={newTyre[key]}
-              onChange={(e) => setNewTyre({ ...newTyre, [key]: e.target.value })}
+              onChange={(e) =>
+                setNewTyre({ ...newTyre, [key]: e.target.value })
+              }
               className="w-48"
             />
           ))}
-          <Button onClick={handleAdd} className="bg-orange-600 hover:bg-orange-700 text-white">
+          <Button
+            onClick={handleAdd}
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
             ➕ Add Tyre
           </Button>
         </div>
@@ -241,17 +274,28 @@ export default function TyreManager({ darkMode }) {
             </thead>
             <tbody>
               {tyres.map((tyre) => (
-                <tr key={tyre._id} className={`border-b ${darkMode ? "border-gray-700" : "border-gray-300"} hover:bg-orange-900/10`}>
+                <tr
+                  key={tyre._id}
+                  className={`border-b ${
+                    darkMode ? "border-gray-700" : "border-gray-300"
+                  } hover:bg-orange-900/10`}
+                >
                   <td className="p-3">{tyre.brand}</td>
                   <td className="p-3">{tyre.title}</td>
                   <td className="p-3">{tyre.size}</td>
                   <td className="p-3">₹{tyre.price}</td>
                   <td className="p-3">{tyre.warranty_months} mo</td>
                   <td className="p-3 text-center flex justify-center gap-2">
-                    <Button onClick={() => handleEditClick(tyre)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button
+                      onClick={() => handleEditClick(tyre)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
                       ✏️ Edit
                     </Button>
-                    <Button onClick={() => handleDelete(tyre._id)} variant="destructive">
+                    <Button
+                      onClick={() => handleDelete(tyre._id)}
+                      variant="destructive"
+                    >
                       🗑️ Delete
                     </Button>
                   </td>
@@ -259,7 +303,12 @@ export default function TyreManager({ darkMode }) {
               ))}
               {tyres.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-muted-foreground">No tyres in DB.</td>
+                  <td
+                    colSpan={6}
+                    className="p-6 text-center text-muted-foreground"
+                  >
+                    No tyres in DB.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -267,13 +316,10 @@ export default function TyreManager({ darkMode }) {
         </div>
       </section>
 
-      {/* Edit Tyre Dialog (theme-aware styling) */}
+      {/* Edit Tyre Dialog */}
       {editingTyre && (
         <Dialog open={true} onOpenChange={() => setEditingTyre(null)}>
-          <DialogContent
-            // ensure the dialog content and text adapt to dark mode
-            className="sm:max-w-[520px] bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-          >
+          <DialogContent className="sm:max-w-[520px] bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
                 Edit Tyre Details
@@ -287,9 +333,10 @@ export default function TyreManager({ darkMode }) {
                     {key.replace("_", " ")}
                   </label>
                   <Input
-                    // ensure input text is visible in both themes
                     value={editingTyre[key] || ""}
-                    onChange={(e) => setEditingTyre({ ...editingTyre, [key]: e.target.value })}
+                    onChange={(e) =>
+                      setEditingTyre({ ...editingTyre, [key]: e.target.value })
+                    }
                     className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -297,7 +344,12 @@ export default function TyreManager({ darkMode }) {
             </div>
 
             <DialogFooter className="flex justify-end gap-2">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={handleEditSave}>💾 Save Changes</Button>
+              <Button
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={handleEditSave}
+              >
+                💾 Save Changes
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
