@@ -362,50 +362,88 @@ export default function Home() {
           {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
 
           {tab === "car" ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div>
-                <label className="block text-sm font-medium mb-1">Make</label>
-                <Combobox
-                  items={makes}
-                  value={selectedMake}
-                  onChange={onMakeSelect}
-                  placeholder="Select Make"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Model</label>
-                <Combobox
-                  items={models}
-                  value={selectedModel}
-                  onChange={onModelSelect}
-                  placeholder="Select Model"
-                  disabled={!selectedMake}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Year</label>
-                <Combobox
-                  items={years}
-                  value={selectedYear}
-                  onChange={onYearSelect}
-                  placeholder="Select Year"
-                  itemToString={(y) => String(y)}
-                  disabled={!selectedModel}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Variant</label>
-                <Combobox
-                  items={variants.map(v => ({ label: v.name + (v.fuel ? ` (${v.fuel})` : ""), value: v.slug }))}
-                  value={variants.find(v => v.slug === selectedVariant) || null}
-                  itemToString={(it) => (it ? it.label : "")}
-                  onChange={(sel) => onVariantSelect(sel?.value)}
-                  placeholder="Select Variant"
-                  disabled={!selectedYear}
-                />
-              </div>
-            </div>
-          ) : (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      {/* Make */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Make</label>
+        <Combobox
+          items={makes}
+          value={selectedMake}
+          onChange={onMakeSelect}
+          placeholder="Select Make"
+        />
+      </div>
+
+      {/* Model */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Model</label>
+        <Combobox
+          items={models}
+          value={selectedModel}
+          onChange={onModelSelect}
+          placeholder="Select Model"
+          disabled={!selectedMake}
+        />
+      </div>
+
+      {/* Year */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Year</label>
+        <Combobox
+          items={years}
+          value={selectedYear}
+          onChange={onYearSelect}
+          placeholder="Select Year"
+          itemToString={(y) => String(y)}
+          disabled={!selectedModel}
+        />
+      </div>
+
+      {/* Variant */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Variant</label>
+        <Combobox
+          items={variants.map((v) => ({
+            label: v.name + (v.fuel ? ` (${v.fuel})` : ""),
+            value: v.slug,
+          }))}
+          value={variants.find((v) => v.slug === selectedVariant) || null}
+          itemToString={(it) => (it ? it.label : "")}
+          onChange={(sel) => onVariantSelect(sel?.value)}
+          placeholder="Select Variant"
+          disabled={!selectedYear}
+        />
+      </div>
+    </div>
+
+    {/* ✅ Tyre Sizes Section */}
+    <div className="mt-4">
+      <label className="block text-sm font-medium mb-2">Tyre Sizes</label>
+      {sizes.length === 0 ? (
+        <div className="text-sm text-gray-500 italic">
+          Select variant to view sizes
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {sizes.map((s) => (
+            <button
+              key={s}
+              onClick={() => onSizeSelect(s)}
+              className={`px-3 py-1 rounded-md text-sm ${
+                selectedSize === s
+                  ? "bg-orange-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-800"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+) : (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium mb-1">Width</label>
