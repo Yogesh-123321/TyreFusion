@@ -3,6 +3,7 @@ import Tyre from "../models/Tyre.js";
 import Car from "../models/carModel.js";
 import Order from "../models/Order.js";
 import { auth, adminOnly } from "../middleware/auth.js";
+import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -17,27 +18,34 @@ router.get("/tyres", auth, adminOnly, async (req, res) => {
 });
 
 // ➕ Add new tyre
-router.post("/tyres", auth, adminOnly, async (req, res) => {
+router.post("/tyres", auth, adminOnly, upload.single("image"), async (req, res) => {
   try {
-    const tyre = new Tyre(req.body);
+    const tyreData = { ...req.body };
+    if (req.file) tyreData.image = req.file.path; // Cloudinary URL
+
+    const tyre = new Tyre(tyreData);
     await tyre.save();
     res.status(201).json(tyre);
   } catch (error) {
+    console.error("Add tyre error:", error);
     res.status(400).json({ error: "Failed to add tyre" });
   }
 });
 
+
 // ✏️ Edit tyre
-router.put("/tyres/:id", auth, adminOnly, async (req, res) => {
+router.put("/tyres/:id", auth, adminOnly, upload.single("image"), async (req, res) => {
   try {
-    const tyre = await Tyre.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const updateData = { ...req.body };
+    if (req.file) updateData.image = req.file.path;
+
+    const tyre = await Tyre.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(tyre);
   } catch (error) {
     res.status(400).json({ error: "Failed to update tyre" });
   }
 });
+
 router.put("/tyres/:id", async (req, res) => {
   try {
     const updated = await Tyre.findByIdAndUpdate(req.params.id, req.body, { new: true });

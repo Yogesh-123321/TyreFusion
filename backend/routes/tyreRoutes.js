@@ -76,5 +76,60 @@ router.get("/", async (req, res) => {
       .json({ message: "Server error while fetching tyres" });
   }
 });
+// ✅ New Dynamic Dropdown Endpoints
+router.get("/distinct/widths", async (req, res) => {
+  try {
+    const tyres = await Tyre.find().select("size");
+    const widths = [...new Set(
+      tyres
+        .map((t) => t.size?.split("/")[0])
+        .filter(Boolean)
+    )].sort((a, b) => Number(a) - Number(b));
+    res.json(widths);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load widths" });
+  }
+});
+
+router.get("/distinct/aspects", async (req, res) => {
+  try {
+    const { width } = req.query;
+    if (!width) return res.json([]);
+
+    const tyres = await Tyre.find({ size: { $regex: `^${width}/` } }).select("size");
+
+    const aspects = [...new Set(
+      tyres
+        .map((t) => t.size?.split("/")[1]?.replace(/R.*/, ""))
+        .filter(Boolean)
+    )].sort((a, b) => Number(a) - Number(b));
+
+    res.json(aspects);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load aspects" });
+  }
+});
+
+router.get("/distinct/rims", async (req, res) => {
+  try {
+    const { width, aspect } = req.query;
+    if (!width || !aspect) return res.json([]);
+
+    const tyres = await Tyre.find({
+      size: { $regex: `^${width}/${aspect}R` }
+    }).select("size");
+
+    const rims = [...new Set(
+      tyres
+        .map((t) => t.size?.match(/R(\d+)/)?.[1])
+        .filter(Boolean)
+    )].sort((a, b) => Number(a) - Number(b));
+
+    res.json(rims);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load rims" });
+  }
+});
+
 
 export default router;

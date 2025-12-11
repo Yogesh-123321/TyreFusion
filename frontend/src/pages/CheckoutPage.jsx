@@ -9,6 +9,7 @@ export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
   const { token } = useAuth();
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
@@ -17,41 +18,31 @@ export default function CheckoutPage() {
     state: "",
     pincode: "",
   });
+
   const [loading, setLoading] = useState(false);
 
-  // ✅ Use environment variable for API base
   const API_BASE = import.meta.env.VITE_API_BASE;
 
-  // total (unit price * qty)
   const total = cart.reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
     0
   );
 
-  // helper to extract tyre id safely
   const resolveTyreId = (item) => {
     if (!item) return null;
     if (item._id) return item._id;
-    if (item.tyre && typeof item.tyre === "string") return item.tyre;
-    if (item.tyre && typeof item.tyre === "object")
-      return item.tyre._id || item.tyre.id || null;
+    if (item.tyre?. _id) return item.tyre._id;
+    if (typeof item.tyre === "string") return item.tyre;
     if (item.id) return item.id;
-    if (item.sku) return item.sku;
     return null;
   };
 
-  // helper to fetch tyre by id for missing size
   const fetchTyreById = async (id) => {
     if (!id) return null;
     try {
       const resp = await axios.get(`${API_BASE}/tyres/by-id/${id}`);
       return resp.data;
-    } catch (e) {
-      console.warn(
-        "Failed to fetch tyre by id for size resolution:",
-        id,
-        e.message
-      );
+    } catch {
       return null;
     }
   };
@@ -72,15 +63,11 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      // Build formattedItems with best-effort size resolution
       const formattedItems = await Promise.all(
         cart.map(async (item) => {
           const tyreId = resolveTyreId(item);
-
-          // First try from cart
           let size = item.size || item.tyre?.size || "";
 
-          // If missing, fetch from DB by id
           if (!size && tyreId) {
             const tyreObj = await fetchTyreById(tyreId);
             size = tyreObj?.size || "";
@@ -91,7 +78,7 @@ export default function CheckoutPage() {
               _id: tyreId,
               brand: item.brand || item.tyre?.brand || "",
               title: item.title || item.tyre?.title || "",
-              size: size || "", // ensure size field exists
+              size: size,
               price: Number(item.price || item.tyre?.price || 0),
             },
             quantity: Number(item.quantity || 1),
@@ -102,40 +89,24 @@ export default function CheckoutPage() {
         })
       );
 
-      // debug: inspect payload
-      console.log("ORDER PAYLOAD ITEMS:", formattedItems);
+      const invalid = formattedItems.some((it) => !it.tyre || !it.tyre._id);
+      if (invalid) throw new Error("Invalid cart items — missing tyre ID");
 
-      // sanity check
-      const hasInvalidItems = formattedItems.some(
-        (it) => !it.tyre || !it.tyre._id
-      );
-      if (hasInvalidItems) {
-        throw new Error("Invalid cart items — missing tyre ID");
-      }
-
-      // ✅ Create order via backend
-      const res = await axios.post(
+      await axios.post(
         `${API_BASE}/orders`,
         {
           items: formattedItems,
           totalAmount: total,
           shippingAddress: form,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("✅ Order placed successfully:", res.data);
-      alert("🎉 Order placed successfully!");
+      alert("Order placed successfully!");
       clearCart();
       navigate("/my-orders");
     } catch (err) {
-      console.error("❌ Order failed:", err);
-      alert(err.response?.data?.message || err.message || "Order failed");
+      alert(err.response?.data?.message || "Order failed");
     } finally {
       setLoading(false);
     }
@@ -143,37 +114,92 @@ export default function CheckoutPage() {
 
   if (cart.length === 0)
     return (
-      <div className="text-center mt-20 text-gray-500">
+      <div className="text-center mt-20 text-gray-500 dark:text-gray-300">
         🛒 Your cart is empty
       </div>
     );
 
   return (
-    <div className="max-w-xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-orange-500 text-center">
         Checkout
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {Object.keys(form).map((field) => (
-          <input
-            key={field}
-            type="text"
-            placeholder={
-              field.charAt(0).toUpperCase() + field.slice(1).replace("_", " ")
-            }
-            value={form[field]}
-            onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-            required
-            className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-          />
-        ))}
+      {/* ---------- ORDER SUMMARY ---------- */}
+      <div className="mb-6 p-4 rounded-lg border bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm">
+        <h2 className="text-xl font-semibold text-orange-500 mb-3">
+          Order Summary
+        </h2>
+
+        <div className="space-y-4">
+          {cart.map((item) => (
+            <div
+              key={item._id}
+              className="flex items-center justify-between border-b pb-3"
+            >
+              <div className="flex items-center gap-3">
+                <img
+                  src={item.image || item.tyre?.image || "/tyre.png"}
+                  className="w-14 h-14 object-contain rounded-md bg-white dark:bg-gray-700 border"
+                />
+                <div>
+                  <div className="font-semibold text-gray-900 dark:text-white">
+                    {item.brand || item.tyre?.brand} {item.title || item.tyre?.title}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Size: {item.size || item.tyre?.size}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-gray-900 dark:text-gray-200 font-medium">
+                  ₹{item.price} × {item.quantity}
+                </p>
+                <p className="text-orange-500 font-semibold">
+                  ₹{item.price * item.quantity}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-right text-lg mt-3 font-bold text-orange-600">
+          Total: ₹{total}
+        </div>
+      </div>
+
+      {/* ---------- CHECKOUT FORM ---------- */}
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 border p-6 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 shadow-sm"
+      >
+        <h2 className="text-xl font-semibold text-orange-500 text-center mb-4">
+          Shipping Details
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Object.keys(form).map((field) => (
+            <input
+              key={field}
+              type="text"
+              placeholder={field.replace(/([A-Z])/g, " $1")}
+              value={form[field]}
+              onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+              required
+              className="w-full p-2 border rounded-md bg-gray-50 
+                         dark:bg-gray-800 dark:text-white 
+                         border-gray-300 dark:border-gray-700
+                         focus:ring-2 focus:ring-orange-500 outline-none"
+            />
+          ))}
+        </div>
 
         <div className="text-right mt-6">
           <Button
             type="submit"
             disabled={loading}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2"
           >
             {loading ? "Placing Order..." : `Place Order (₹${total})`}
           </Button>

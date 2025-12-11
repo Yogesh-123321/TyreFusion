@@ -8,7 +8,6 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Use environment variable for API base
   const API_BASE = import.meta.env.VITE_API_BASE;
 
   useEffect(() => {
@@ -18,9 +17,7 @@ export default function MyOrdersPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setOrders(res.data))
-      .catch((err) => {
-        console.error("Failed to fetch user orders:", err);
-      })
+      .catch((err) => console.error("Failed to fetch user orders:", err))
       .finally(() => setLoading(false));
   }, [token, API_BASE]);
 
@@ -49,62 +46,112 @@ export default function MyOrdersPage() {
           No orders found.
         </p>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-6">
           {orders.map((order) => (
-            <div
+            <Card
               key={order._id}
-              className="rounded-lg overflow-hidden bg-white dark:bg-slate-900 dark:border-slate-700 border border-orange-200"
+              className="border border-orange-300 dark:border-orange-800 bg-white dark:bg-gray-900 rounded-xl shadow-sm"
             >
-              {/* Transparent Card to match theme */}
-              <Card className="bg-transparent shadow-none">
-                <CardContent className="p-4">
-                  <p className="text-sm text-gray-400 dark:text-gray-400">
+              <CardContent className="p-5 space-y-4">
+
+                {/* ORDER HEADER */}
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Order ID: {order._id}
                   </p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
+                  <p className="font-semibold text-lg text-orange-500 mt-1">
                     Total: ₹{order.totalAmount}
                   </p>
-                  <p className="text-gray-700 dark:text-gray-300">
+
+                  <p
+                    className={`font-semibold mt-1 ${
+                      order.status === "Delivered"
+                        ? "text-green-500"
+                        : order.status === "Cancelled"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
                     Status: {order.status}
                   </p>
-                  <p className="text-gray-700 dark:text-gray-300">
+
+                  <p className="text-gray-600 dark:text-gray-400">
                     Date: {new Date(order.createdAt).toLocaleString()}
                   </p>
+                </div>
 
-                  {order.items && (
-                    <ul className="list-disc ml-6 mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {order.items.map((item, idx) => {
-                        const displaySize =
-                          (item.tyre?.size || item.size || "").trim() || "—";
-                        const brand = item.tyre?.brand || "Tyre";
-                        const title = item.tyre?.title || "";
-                        const key = item._id || `${order._id}-item-${idx}`;
+                {/* SHIPPING ADDRESS IF AVAILABLE */}
+                {order.shippingAddress && (
+                  <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                    <h3 className="font-semibold text-orange-500 mb-2">
+                      Shipping Address
+                    </h3>
+                    <p>{order.shippingAddress.fullName}</p>
+                    <p>{order.shippingAddress.phone}</p>
+                    <p>{order.shippingAddress.address}</p>
+                    <p>
+                      {order.shippingAddress.city},{" "}
+                      {order.shippingAddress.state} —{" "}
+                      {order.shippingAddress.pincode}
+                    </p>
+                  </div>
+                )}
 
-                        return (
-                          <li key={key} className="mb-1">
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {brand}
-                            </span>{" "}
-                            {title ? `(${title})` : ""}{" "}
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              — Size: {displaySize}
-                            </span>{" "}
-                            ×{" "}
-                            <span className="text-gray-700 dark:text-gray-300">
-                              {item.quantity}
-                            </span>{" "}
-                            —{" "}
-                            <span className="text-gray-700 dark:text-gray-300">
-                              ₹{item.price}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                {/* ORDERED ITEMS */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-orange-500">Items</h3>
+
+                  {order.items.map((item, idx) => {
+                    const tyre = item.tyre || {};
+                    const key = item._id || `${order._id}-item-${idx}`;
+                    const size = tyre.size || item.size || "—";
+                    const image = tyre.image || "/tyre.png";
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-white dark:bg-gray-800"
+                      >
+                        {/* Tyre Image */}
+                        <img
+                          src={image}
+                          alt={tyre.title}
+                          className="w-28 h-28 object-contain border rounded-md bg-white"
+                        />
+
+                        {/* Details */}
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg">
+                            {tyre.brand || "Tyre"} {tyre.title || ""}
+                          </h4>
+
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+                            Size: <span className="font-medium">{size}</span>
+                          </p>
+
+                          {tyre.warranty_months && (
+                            <p className="text-gray-600 dark:text-gray-400 text-sm">
+                              Warranty:{" "}
+                              <span className="font-medium">
+                                {tyre.warranty_months} months
+                              </span>
+                            </p>
+                          )}
+
+                          <p className="font-semibold mt-2 text-gray-900 dark:text-gray-200">
+                            ₹{item.price} × {item.quantity}
+                          </p>
+
+                          <p className="text-orange-500 font-semibold mt-1">
+                            Subtotal: ₹{item.price * item.quantity}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

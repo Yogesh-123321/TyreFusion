@@ -11,6 +11,7 @@ import carRoutes from "./routes/carRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import wheelFitmentRoute from "./routes/wheelFitmentRoute.js";
 import wheelSizeRoutes from "./routes/wheelsizeRoutes.js";
+import aiSearchRoute from "./routes/aiSearch.js";
 console.log("🔑 Loaded Wheel-Size key:", process.env.WHEELSIZE_API_KEY);
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wheels", wheelFitmentRoute);
 app.use("/api/wheelsize", wheelSizeRoutes);
+app.use("/api/ai-search", aiSearchRoute);
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -36,6 +38,8 @@ mongoose
   })
   .then(() => console.log("✅ Mongo connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+  
+console.log("Loaded key:", process.env.OPENROUTER_API_KEY);
 
 // Server Start
 const PORT = process.env.PORT || 5000;
