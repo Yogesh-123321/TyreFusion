@@ -10,6 +10,9 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
   const { cart } = useCart();
   const navigate = useNavigate();
 
+  // FIXED: Correct total items count based on quantity
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -18,9 +21,6 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
     setMobileMenuOpen(false);
   };
 
-  // -----------------------------
-  // THEME-BASED NAVBAR COLORS
-  // -----------------------------
   const navbarClasses = isDarkMode
     ? "bg-gradient-to-r from-black via-gray-900 to-orange-800 text-white border-orange-500"
     : "bg-gradient-to-r from-white via-gray-200 to-orange-100 text-gray-900 border-orange-300";
@@ -100,12 +100,14 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 isDarkMode ? "text-orange-400" : "text-orange-600"
               } hover:opacity-80 transition`}
             />
-            {cart.length > 0 && (
+
+            {/* UPDATED → Show totalItems instead of cart.length */}
+            {totalItems > 0 && (
               <span
-                key={cart.length}
+                key={totalItems}
                 className="absolute -top-2 -right-2 bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse"
               >
-                {cart.length}
+                {totalItems}
               </span>
             )}
           </Link>
@@ -132,7 +134,11 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
           } hover:opacity-80 transition`}
           onClick={() => setMobileMenuOpen(true)}
         >
-          <Menu className={`w-6 h-6 ${isDarkMode ? "text-orange-400" : "text-orange-600"}`} />
+          <Menu
+            className={`w-6 h-6 ${
+              isDarkMode ? "text-orange-400" : "text-orange-600"
+            }`}
+          />
         </button>
       </nav>
 
@@ -146,7 +152,9 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
           />
 
           {/* Drawer */}
-          <div className={`w-72 shadow-xl p-6 animate-slideInRight ${drawerClasses}`}>
+          <div
+            className={`w-72 shadow-xl p-6 animate-slideInRight ${drawerClasses}`}
+          >
             {/* Close button */}
             <button
               className={`mb-6 p-2 rounded-lg ${
@@ -154,7 +162,11 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
               } hover:opacity-80 transition`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              <X className={`w-6 h-6 ${isDarkMode ? "text-orange-400" : "text-orange-600"}`} />
+              <X
+                className={`w-6 h-6 ${
+                  isDarkMode ? "text-orange-400" : "text-orange-600"
+                }`}
+              />
             </button>
 
             {/* Mobile Nav Links */}
@@ -202,7 +214,7 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 </>
               )}
 
-              {/* Cart */}
+              {/* UPDATED MOBILE CART INDICATOR */}
               <Link
                 to="/cart"
                 onClick={() => setMobileMenuOpen(false)}
@@ -214,9 +226,10 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                   }`}
                 />
                 <span className="text-lg font-semibold">Cart</span>
-                {cart.length > 0 && (
+
+                {totalItems > 0 && (
                   <span className="bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full ml-auto animate-pulse">
-                    {cart.length}
+                    {totalItems}
                   </span>
                 )}
               </Link>

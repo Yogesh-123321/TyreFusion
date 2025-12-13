@@ -11,6 +11,237 @@ import { fetchVariants, fetchFitments } from "@/api/wheelSize";
 import { fetchMakes, fetchModels, fetchYears } from "@/api/wheelSizeBasic";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const featureIconMap = {
+  "Smooth Ride": "★",
+  "Dry & Wet Grip": "🛞",
+  "Excellent Braking": "🛑",
+  "Low Noise": "🔇",
+  "Fuel Efficient": "⚡",
+};
+function FeatureStamp({ icon, text }) {
+  const getIcon = () => {
+    if (text.includes("Grip")) return "🛞";
+    if (text.includes("Brake")) return "🛑";
+    if (text.includes("Noise")) return "🔇";
+    if (text.includes("Fuel")) return "⛽";
+    if (text.includes("Smooth")) return "★";
+    return "⚡";
+  };
+
+  return (
+    <div
+      className="
+        w-20 h-20
+        flex flex-col items-center justify-center
+        rounded-full
+        border-2 border-red-600
+        text-red-600
+        text-[10px] font-bold
+        uppercase text-center
+        shadow-[0_0_10px_rgba(220,38,38,0.65)]
+        bg-white
+      "
+    >
+      <div className="text-2xl mb-1">{getIcon()}</div>
+      <div className="leading-tight px-1">{text}</div>
+    </div>
+  );
+}
+
+
+/* -------------------------
+   Tyre Image Gallery (Continuous Loop - C2)
+   - One big slider (smooth loop)
+   - Up to 2 thumbnails below (clickable)
+   - Auto-cycle with continuous-feel using per-slide timing
+   - Uses a cloned-slide trick to seamlessly loop
+--------------------------*/
+function TyreImageGallery({ images = [], title = "" }) {
+  // Normalize images array, ensure at least one entry
+  const normalized = (Array.isArray(images) ? images.filter(Boolean) : [])
+    .map((i) => i || "/tyre.png");
+  if (normalized.length === 0) normalized.push("/tyre.png");
+
+  // For thumbnails we want at most 2 thumbnails (as requested)
+  const thumbnailImages = normalized.slice(0, 2);
+
+  // slider state
+  const [index, setIndex] = useState(0); // current slide index (0..n-1)
+  const [isTransitioning, setIsTransitioning] = useState(true);
+  const slidesCount = normalized.length;
+  const totalCycleSec = 6; // S2 chosen: 6-second full cycle
+  // time per slide
+  const intervalMs = Math.max(6000 / Math.max(slidesCount, 1), 500);
+
+  const sliderRef = useRef(null);
+  const autoplayRef = useRef(null);
+  const pauseTimeoutRef = useRef(null);
+
+  // Build slides with clone of first slide appended to enable seamless loop
+  const slides = normalized.concat(normalized[0]);
+
+  // Advance to next slide (with transition)
+  const goTo = (toIdx) => {
+    // toIdx is index in 0..slidesCount-1
+    setIndex(toIdx);
+  };
+
+  const next = () => {
+    setIndex((prev) => prev + 1);
+  };
+
+  // Autoplay: advance at intervalMs
+  useEffect(() => {
+    // clear previous
+    if (autoplayRef.current) clearInterval(autoplayRef.current);
+
+    autoplayRef.current = setInterval(() => {
+      next();
+    }, intervalMs);
+
+    return () => {
+      if (autoplayRef.current) clearInterval(autoplayRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intervalMs, slidesCount]);
+
+  // Handle index wrap-around (we are using cloned slide at end)
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+
+    // Enable smooth transition
+    setIsTransitioning(true);
+    slider.style.transition = "transform 600ms ease";
+
+    const handleTransitionEnd = () => {
+      // when we land on the cloned slide (index === slidesCount), jump back to 0 without transition
+      if (index >= slidesCount) {
+        // jump
+        slider.style.transition = "none";
+        const resetTranslate = 0; // show first slide
+        slider.style.transform = `translateX(${resetTranslate}px)`;
+        // Force layout then re-enable transition and reset index to 0
+        // We use requestAnimationFrame to ensure the browser applies the non-transition jump
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsTransitioning(false); // temporarily disable transition while resetting state
+            setIndex(0);
+            // re-enable transition for subsequent moves
+            slider.style.transition = "transform 600ms ease";
+            setIsTransitioning(true);
+          });
+        });
+      }
+    };
+
+    slider.addEventListener("transitionend", handleTransitionEnd);
+
+    return () => slider.removeEventListener("transitionend", handleTransitionEnd);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, slidesCount]);
+
+  // Apply transform when index changes (or when resetting)
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+
+    // Each slide width will be equal to container width (we use CSS flex)
+    // Compute translateX using element widths
+    const container = slider.parentElement;
+    if (!container) return;
+    const slideWidth = container.clientWidth;
+    const translateX = -slideWidth * index;
+    // If we disabled transition above, ensure we don't animate
+    if (!isTransitioning) {
+      slider.style.transition = "none";
+    } else {
+      slider.style.transition = "transform 600ms ease";
+    }
+    slider.style.transform = `translateX(${translateX}px)`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, isTransitioning]);
+
+  // When user clicks a thumbnail, jump to that slide and pause autoplay briefly
+  const handleThumbnailClick = (i) => {
+    // pause autoplay briefly
+    if (autoplayRef.current) clearInterval(autoplayRef.current);
+    if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+
+    goTo(i);
+    // restart autoplay after 4s
+    pauseTimeoutRef.current = setTimeout(() => {
+      // restart interval
+      autoplayRef.current = setInterval(() => {
+        next();
+      }, intervalMs);
+    }, 4000);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autoplayRef.current) clearInterval(autoplayRef.current);
+      if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+    };
+  }, []);
+
+  // Render
+  return (
+    <div className="w-full">
+      {/* MAIN SLIDER VIEWPORT */}
+      <div className="w-full overflow-hidden rounded border bg-white dark:bg-gray-900">
+        <div
+          ref={sliderRef}
+          className="flex"
+          // inline styles set by effect for transform/transition
+          style={{
+            width: `${slides.length * 100}%`,
+            // each child slide will be flex: 0 0 auto and width = parent / slides.length via CSS below
+          }}
+        >
+          {slides.map((src, idx) => (
+            <div
+              key={idx}
+              className="flex-shrink-0"
+              style={{ width: `${100 / slides.length}%`, display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 0" }}
+            >
+              <img
+                src={src}
+                alt={`${title || "tyre"} - ${idx}`}
+                className="max-h-40 object-contain"
+                style={{ maxWidth: "90%" }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* THUMBNAILS */}
+      <div className="flex gap-2 justify-center mt-2">
+        {thumbnailImages.map((t, i) => (
+          <button
+            key={i}
+            onClick={() => handleThumbnailClick(i)}
+            className={`p-0 border rounded overflow-hidden ${i === (index % slidesCount) ? "ring-2 ring-orange-600" : ""}`}
+            style={{ width: 56, height: 56 }}
+            aria-label={`Show image ${i + 1}`}
+          >
+            <img src={t} alt={`${title} thumb ${i}`} className="w-full h-full object-contain" />
+          </button>
+        ))}
+
+        {/* If fewer than 2 thumbnails exist, fill with duplicates to maintain layout */}
+        {thumbnailImages.length < 2 &&
+          Array.from({ length: 2 - thumbnailImages.length }).map((_, j) => (
+            <div key={`empty-${j}`} className="w-14 h-14 border rounded bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-400">
+              &nbsp;
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
 
 /* -------------------------
    Small reusable Combobox
@@ -112,7 +343,8 @@ function Combobox({
 --------------------------*/
 export default function Home() {
   const [tab, setTab] = useState("car");
-
+// quantity per tyre stored globally
+const [quantities, setQuantities] = useState({});
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
   const [years, setYears] = useState([]);
@@ -718,48 +950,176 @@ export default function Home() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-            {filteredTyres.map((tyre, i) => (
-              <Card key={tyre._id || i} className="p-4">
-                <img
-                  src={tyre.image || "/tyre.png"}
-                  alt={tyre.title}
-                  className="w-full h-40 object-contain mb-3"
-                />
-                <h3 className="font-semibold text-lg">
-                  {tyre.brand} {tyre.title}
-                </h3>
-                <div className="flex items-center justify-between mt-2">
-                  <div className="text-sm text-gray-600">{tyre.size}</div>
-                  <div className="text-lg font-semibold text-orange-600">
-                    ₹{tyre.price}
-                  </div>
-                </div>
-                {tyre.warrantyMonths && (
-                  <div className="text-sm text-gray-500 mt-1">
-                    Warranty: {tyre.warrantyMonths} months
-                  </div>
-                )}
-                <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={() => handleAddToCart(tyre)}
-                    className="bg-orange-600 text-white w-full sm:w-auto"
-                  >
-                    Add to Cart
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      alert("View details page is not implemented yet.")
-                    }
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                  >
-                    Details
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {/* -------------------------
+    RESULTS SECTION
+-------------------------- */}
+
+{/* -------------------------
+    RESULTS SECTION
+-------------------------- */}
+{/* -------------------------
+    RESULTS SECTION
+-------------------------- */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+  {filteredTyres.map((tyre, i) => {
+    const stock = Number(tyre.stock ?? 0);
+
+    // quantity logic preserved
+    const qty = quantities[tyre._id] || 1;
+    const setQty = (v) =>
+      setQuantities((prev) => ({
+        ...prev,
+        [tyre._id]: v,
+      }));
+
+    const increaseQty = () => stock > qty && setQty(qty + 1);
+    const decreaseQty = () => qty > 1 && setQty(qty - 1);
+
+    const handleAdd = () => {
+      if (stock > 0) handleAddToCart({ ...tyre, quantity: qty });
+    };
+
+    // STOCK BADGE
+    let stockBadge = null;
+    if (stock === 0)
+      stockBadge = (
+        <span className="text-red-600 text-sm font-semibold">OUT OF STOCK</span>
+      );
+    else if (stock < 10)
+      stockBadge = (
+        <span className="text-orange-600 text-sm font-semibold">
+          Only {stock} left
+        </span>
+      );
+    else
+      stockBadge = (
+        <span className="text-green-600 text-sm font-semibold">In Stock</span>
+      );
+
+    return (
+ <Card
+  key={tyre._id || i}
+  className="
+    relative p-4 rounded-xl overflow-visible
+    border border-gray-200
+    bg-gradient-to-br from-[#f6f7f8] via-[#fdfdfd] to-[#eef0f2]
+    shadow-[0_10px_25px_rgba(0,0,0,0.08)]
+
+    dark:border-gray-800
+    dark:bg-gradient-to-br
+    dark:from-[#12181e]
+    dark:via-[#0f151b]
+    dark:to-[#0b1116]
+    dark:shadow-[0_12px_30px_rgba(0,0,0,0.75)]
+  "
+>
+
+    {/* TITLE */}
+    <div className="px-2 pb-2">
+      <h3 className="font-bold text-lg uppercase text-gray-900 dark:text-gray-100">
+        {tyre.brand} {tyre.title}
+      </h3>
+      <p className="text-sm text-gray-500">{tyre.size} Tubeless Tyre</p>
+    </div>
+
+    {/* IMAGE GALLERY (UNCHANGED) */}
+    <TyreImageGallery
+      images={
+        Array.isArray(tyre.images) && tyre.images.length > 0
+          ? tyre.images
+          : tyre.image
+          ? [tyre.image]
+          : ["/tyre.png"]
+      }
+      title={tyre.title || `${tyre.brand} tyre`}
+    />
+
+    {/* WARRANTY */}
+    <div className="mt-3 px-1">
+      <span className="text-sm font-semibold text-white-700">
+        {tyre.warranty_months
+          ? `${Math.floor(tyre.warranty_months / 12)} Years Warranty`
+          : "Warranty Details Available"}
+      </span>
+    </div>
+{/* FEATURE BANNERS BELOW WARRANTY */}
+{/* FEATURES — BELOW WARRANTY (SINGLE LINE) */}
+{/* FEATURES — SIMPLE STAMPS */}
+{tyre.features && tyre.features.length > 0 && (
+  <div className="mt-3 flex flex-wrap gap-2">
+    {tyre.features.slice(0, 4).map((f, i) => (
+      <FeatureStamp
+        key={i}
+        text={f}
+        icon={featureIconMap[f] || "✔"}
+      />
+    ))}
+  </div>
+)}
+
+
+
+
+    {/* PRICE */}
+    <div className="px-1 mt-4">
+      <p className="text-xl font-bold text-orange-700">₹{tyre.price}</p>
+      <p className="text-xs text-gray-400">Incl. Taxes</p>
+    </div>
+
+    {/* STOCK */}
+    <div className="px-1 mt-2">
+      {stock === 0 ? (
+        <span className="text-red-600 font-semibold text-sm">OUT OF STOCK</span>
+      ) : stock < 10 ? (
+        <span className="text-orange-500 font-semibold text-sm">
+          Only {stock} left
+        </span>
+      ) : (
+        <span className="text-green-600 font-semibold text-sm">In Stock</span>
+      )}
+    </div>
+
+    {/* QUANTITY */}
+    {stock > 0 && (
+      <div className="flex items-center gap-3 mt-3 px-1">
+        <button
+          onClick={decreaseQty}
+          className="px-3 py-1 bg-black-200 rounded"
+          disabled={qty <= 1}
+        >
+          -
+        </button>
+
+        <span className="font-semibold">{qty}</span>
+
+        <button
+          onClick={increaseQty}
+          className="px-3 py-1 bg-black-200 rounded"
+          disabled={qty >= stock}
+        >
+          +
+        </button>
+      </div>
+    )}
+
+    {/* ADD TO CART */}
+    <div className="px-1 mt-4">
+      <Button
+        className={`w-full bg-orange-600 text-white py-3 rounded-md shadow 
+        hover:bg-orange-700 transition ${
+          stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+        onClick={handleAdd}
+        disabled={stock === 0}
+      >
+        {stock === 0 ? "OUT OF STOCK" : "ADD TO CART"}
+      </Button>
+    </div>
+  </Card>
+);
+  })}
+</div>
+
         </section>
       </div>
 

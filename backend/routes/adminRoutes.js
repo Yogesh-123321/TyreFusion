@@ -3,27 +3,48 @@ import Tyre from "../models/Tyre.js";
 import Car from "../models/carModel.js";
 import Order from "../models/Order.js";
 import { auth, adminOnly } from "../middleware/auth.js";
-import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
-// 🛞 Get all tyres
+/* -----------------------------------------
+   GET ALL TYRES (ADMIN ONLY)
+------------------------------------------ */
 router.get("/tyres", auth, adminOnly, async (req, res) => {
   try {
-    const tyres = await Tyre.find();
+    const tyres = await Tyre.find().sort({ createdAt: -1 });
     res.json(tyres);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch tyres" });
   }
 });
 
-// ➕ Add new tyre
-router.post("/tyres", auth, adminOnly, upload.single("image"), async (req, res) => {
+/* -----------------------------------------
+   ADD NEW TYRE (features + images + stock)
+------------------------------------------ */
+router.post("/tyres", auth, adminOnly, async (req, res) => {
   try {
-    const tyreData = { ...req.body };
-    if (req.file) tyreData.image = req.file.path; // Cloudinary URL
+    const {
+      brand,
+      title,
+      size,
+      price,
+      warranty_months,
+      images,
+      stock,
+      features, // <<==== ADDED
+    } = req.body;
 
-    const tyre = new Tyre(tyreData);
+    const tyre = new Tyre({
+      brand,
+      title,
+      size,
+      price: Number(price),
+      warranty_months: Number(warranty_months),
+      images: Array.isArray(images) ? images : [],
+      stock: Number(stock) || 0,
+      features: Array.isArray(features) ? features : [], // <<==== ADDED
+    });
+
     await tyre.save();
     res.status(201).json(tyre);
   } catch (error) {
@@ -32,55 +53,105 @@ router.post("/tyres", auth, adminOnly, upload.single("image"), async (req, res) 
   }
 });
 
-
-// ✏️ Edit tyre
-router.put("/tyres/:id", auth, adminOnly, upload.single("image"), async (req, res) => {
+/* -----------------------------------------
+   UPDATE TYRE (features + images + stock)
+------------------------------------------ */
+router.put("/tyres/:id", auth, adminOnly, async (req, res) => {
   try {
-    const updateData = { ...req.body };
-    if (req.file) updateData.image = req.file.path;
+    const {
+      brand,
+      title,
+      size,
+      price,
+      warranty_months,
+      images,
+      stock,
+      features, // <<==== ADDED
+    } = req.body;
 
-    const tyre = await Tyre.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const updateData = {
+      brand,
+      title,
+      size,
+      price: Number(price),
+      warranty_months: Number(warranty_months),
+    };
+
+    if (Array.isArray(images)) updateData.images = images;
+
+    if (stock !== undefined) updateData.stock = Number(stock);
+
+    if (Array.isArray(features))
+      updateData.features = features; // <<==== ADDED
+
+    const tyre = await Tyre.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!tyre)
+      return res.status(404).json({ error: "Tyre not found" });
+
     res.json(tyre);
   } catch (error) {
+    console.error("Update tyre error:", error);
     res.status(400).json({ error: "Failed to update tyre" });
   }
 });
 
-router.put("/tyres/:id", async (req, res) => {
+/* -----------------------------------------
+   QUICK STOCK UPDATE ROUTE
+------------------------------------------ */
+router.patch("/tyres/:id/stock", auth, adminOnly, async (req, res) => {
   try {
-    const updated = await Tyre.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Tyre not found" });
-    res.json(updated);
+    const { stock } = req.body;
+
+    if (stock === undefined)
+      return res.status(400).json({ error: "Stock is required" });
+
+    const tyre = await Tyre.findByIdAndUpdate(
+      req.params.id,
+      { stock: Number(stock) },
+      { new: true }
+    );
+
+    if (!tyre)
+      return res.status(404).json({ error: "Tyre not found" });
+
+    res.json({
+      message: "Stock updated successfully",
+      tyre,
+    });
   } catch (err) {
-    console.error("Error updating tyre:", err);
-    res.status(500).json({ message: "Failed to update tyre" });
+    console.error("Stock update error:", err);
+    res.status(500).json({ error: "Failed to update stock" });
   }
 });
-// 📊 Admin Dashboard Stats (used by frontend)
+
+/* -----------------------------------------
+   ADMIN DASHBOARD STATS
+------------------------------------------ */
 router.get("/stats", auth, adminOnly, async (req, res) => {
   try {
-    // Counts
     const totalTyres = await Tyre.countDocuments();
     const totalOrders = await Order.countDocuments();
     const totalCars = await Car.countDocuments();
 
-    // Calculate total sales and pending services
     const orders = await Order.find();
     const totalSales = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
     const pendingServices = orders.filter(o => o.status === "Pending").length;
 
-    // Monthly sales chart data
-    const salesByMonth = [];
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    months.forEach(month => {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const salesByMonth = months.map((m) => {
       const monthOrders = orders.filter(
-        o => new Date(o.createdAt).toLocaleString("default", { month: "short" }) === month
+        (o) =>
+          new Date(o.createdAt).toLocaleString("default", { month: "short" }) === m
       );
-      const total = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-      salesByMonth.push({ month, sales: total });
+      return {
+        month: m,
+        sales: monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+      };
     });
 
-    // Send response
     res.json({
       totalTyres,
       totalOrders,
@@ -89,10 +160,34 @@ router.get("/stats", auth, adminOnly, async (req, res) => {
       pendingServices,
       salesByMonth,
     });
+
   } catch (error) {
     console.error("Error fetching admin stats:", error);
     res.status(500).json({ error: "Failed to fetch admin stats" });
   }
 });
+/* -----------------------------------------
+   DELETE TYRE (ADMIN ONLY)
+------------------------------------------ */
+router.delete("/tyres/:id", auth, adminOnly, async (req, res) => {
+  try {
+    const tyre = await Tyre.findById(req.params.id);
+
+    if (!tyre) {
+      return res.status(404).json({ error: "Tyre not found" });
+    }
+
+    await tyre.deleteOne();
+
+    res.json({
+      message: "Tyre deleted successfully",
+      tyreId: req.params.id,
+    });
+  } catch (error) {
+    console.error("Delete tyre error:", error);
+    res.status(500).json({ error: "Failed to delete tyre" });
+  }
+});
+
 
 export default router;

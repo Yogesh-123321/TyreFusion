@@ -1,3 +1,4 @@
+// backend/models/Tyre.js
 import mongoose from "mongoose";
 
 const tyreSchema = new mongoose.Schema(
@@ -8,22 +9,47 @@ const tyreSchema = new mongoose.Schema(
       default: () =>
         `TYR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
     },
+
     brand: { type: String, required: true },
-    title: { type: String }, // ✅ not required now — we’ll auto-generate if missing
+    title: { type: String }, // auto-generated if missing
     size: { type: String, required: true },
     price: { type: Number, required: true },
+
     warranty_months: { type: Number, default: 36 },
-    features: [{ type: String }],
-    image: { type: String },
-    stock: { type: Number, default: 0 },
+
+    // NEW: images array (Cloudinary URLs). Future-proof for multiple images.
+    images: {
+      type: [String],
+      default: [],
+    },
+
+    // NEW: stock management field
+    stock: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     type: { type: String, default: "Tubeless" },
-    loadIndex: { type: String },
-    rating: { type: String },
+    loadIndex: String,
+    rating: String,
+
+    // UPDATED FEATURES FIELD — max 3 features allowed
+    features: {
+      type: [String],
+      validate: {
+        validator: function (v) {
+          return v.length <= 3; // admin cannot save more than 3
+        },
+        message: "Maximum 3 features allowed.",
+      },
+      default: [],
+    },
   },
   { timestamps: true }
 );
 
-// ✅ Add a pre-save hook to auto-generate title if missing
+// Auto-generate title if missing
 tyreSchema.pre("save", function (next) {
   if (!this.title) {
     this.title = `${this.brand || "Tyre"} ${this.size || ""}`.trim();
@@ -31,7 +57,4 @@ tyreSchema.pre("save", function (next) {
   next();
 });
 
-tyreSchema.index({ sku: 1 }, { unique: true, sparse: true });
-
-const Tyre = mongoose.model("Tyre", tyreSchema);
-export default Tyre;
+export default mongoose.model("Tyre", tyreSchema);

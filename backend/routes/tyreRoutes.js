@@ -3,11 +3,9 @@ import Tyre from "../models/Tyre.js";
 
 const router = express.Router();
 
-/**
- * GET /api/tyres?size=215/60R16
- * Returns matching tyres from MongoDB for a given tyre size.
- */
-// GET /api/tyres/by-id/:id
+/* ---------------------------------------------------------
+   GET TYRE BY ID
+--------------------------------------------------------- */
 router.get("/by-id/:id", async (req, res) => {
   try {
     const tyre = await Tyre.findById(req.params.id).lean();
@@ -19,90 +17,98 @@ router.get("/by-id/:id", async (req, res) => {
   }
 });
 
+/* ---------------------------------------------------------
+   GET TYRES BY SIZE  (PUBLIC)
+--------------------------------------------------------- */
 router.get("/", async (req, res) => {
   try {
     const { size } = req.query;
-    if (!size) return res.status(200).json([]); // Return empty if no query
+    if (!size) return res.status(200).json([]);
 
-    // 🔹 Step 1: Normalize incoming size
     const normalizeSize = (s = "") =>
       s.replace(/\s+/g, "").replace(/[^0-9A-Z/]/gi, "").toUpperCase();
 
-    const normalized = normalizeSize(size); // e.g. "215/60R16"
+    const normalized = normalizeSize(size);
 
-    // Common alternate patterns
-    const alt1 = normalized.replace("R", " R"); // "215/60 R16"
-    const alt2 = normalized.replace("/", " /"); // "215 /60R16"
-    const alt3 = normalized.replace(/R(\d+)/, " R $1"); // "215/60 R 16"
+    const alt1 = normalized.replace("R", " R");
+    const alt2 = normalized.replace("/", " /");
+    const alt3 = normalized.replace(/R(\d+)/, " R $1");
 
-    // 🔹 Step 2: Build regexes for fuzzy matching
     const variants = [normalized, alt1, alt2, alt3];
     const regexes = variants.map(
       (v) => new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
     );
 
-    console.log(`🛞 /api/tyres - searching for: "${size}" → normalized: "${normalized}"`);
+    console.log(`🛞 Searching tyres for size: "${normalized}"`);
 
-    // 🔹 Step 3: Find tyres that match any pattern
     const tyresRaw = await Tyre.find({
       $or: regexes.map((r) => ({ size: r })),
     })
-      .select("sku brand title size price warranty_months stock image rating")
+      .select(
+        "sku brand title size price warranty_months stock image images rating features"
+      ) // <-- FEATURES ADDED HERE
       .limit(200)
       .lean();
 
-    // 🔹 Step 4: Deduplicate by SKU or brand|title|size
     const seen = new Set();
     const tyres = [];
+
     for (const t of tyresRaw) {
       const key = t.sku
         ? t.sku.toString()
         : `${(t.brand || "").toLowerCase()}|${(t.title || "").toLowerCase()}|${(t.size || "").toLowerCase()}`;
+
       if (!seen.has(key)) {
         seen.add(key);
         tyres.push(t);
       }
     }
 
-    console.log(
-      `✅ Found ${tyresRaw.length} raw, ${tyres.length} unique tyres for "${size}"`
-    );
-
     return res.status(200).json(tyres);
   } catch (err) {
-    console.error("❌ Error in /api/tyres route:", err);
-    return res
-      .status(500)
-      .json({ message: "Server error while fetching tyres" });
+    console.error("❌ Error in /api/tyres:", err);
+    return res.status(500).json({ message: "Server error while fetching tyres" });
   }
 });
-// ✅ New Dynamic Dropdown Endpoints
+
+/* ---------------------------------------------------------
+   GET ALL DISTINCT WIDTHS
+--------------------------------------------------------- */
 router.get("/distinct/widths", async (req, res) => {
   try {
     const tyres = await Tyre.find().select("size");
-    const widths = [...new Set(
-      tyres
-        .map((t) => t.size?.split("/")[0])
-        .filter(Boolean)
-    )].sort((a, b) => Number(a) - Number(b));
+
+    const widths = [
+      ...new Set(
+        tyres.map((t) => t.size?.split("/")[0]).filter(Boolean)
+      ),
+    ].sort((a, b) => Number(a) - Number(b));
+
     res.json(widths);
   } catch (err) {
     res.status(500).json({ error: "Failed to load widths" });
   }
 });
 
+/* ---------------------------------------------------------
+   GET ALL DISTINCT ASPECT RATIOS (filtered by width)
+--------------------------------------------------------- */
 router.get("/distinct/aspects", async (req, res) => {
   try {
     const { width } = req.query;
     if (!width) return res.json([]);
 
-    const tyres = await Tyre.find({ size: { $regex: `^${width}/` } }).select("size");
+    const tyres = await Tyre.find({
+      size: { $regex: `^${width}/` },
+    }).select("size");
 
-    const aspects = [...new Set(
-      tyres
-        .map((t) => t.size?.split("/")[1]?.replace(/R.*/, ""))
-        .filter(Boolean)
-    )].sort((a, b) => Number(a) - Number(b));
+    const aspects = [
+      ...new Set(
+        tyres
+          .map((t) => t.size?.split("/")[1]?.replace(/R.*/, ""))
+          .filter(Boolean)
+      ),
+    ].sort((a, b) => Number(a) - Number(b));
 
     res.json(aspects);
   } catch (err) {
@@ -110,20 +116,23 @@ router.get("/distinct/aspects", async (req, res) => {
   }
 });
 
+/* ---------------------------------------------------------
+   GET ALL DISTINCT RIM SIZES (filtered by width + aspect)
+--------------------------------------------------------- */
 router.get("/distinct/rims", async (req, res) => {
   try {
     const { width, aspect } = req.query;
     if (!width || !aspect) return res.json([]);
 
     const tyres = await Tyre.find({
-      size: { $regex: `^${width}/${aspect}R` }
+      size: { $regex: `^${width}/${aspect}R` },
     }).select("size");
 
-    const rims = [...new Set(
-      tyres
-        .map((t) => t.size?.match(/R(\d+)/)?.[1])
-        .filter(Boolean)
-    )].sort((a, b) => Number(a) - Number(b));
+    const rims = [
+      ...new Set(
+        tyres.map((t) => t.size?.match(/R(\d+)/)?.[1]).filter(Boolean)
+      ),
+    ].sort((a, b) => Number(a) - Number(b));
 
     res.json(rims);
   } catch (err) {
@@ -131,5 +140,26 @@ router.get("/distinct/rims", async (req, res) => {
   }
 });
 
+/* ---------------------------------------------------------
+   STOCK CHECK ENDPOINT (used by cart)
+--------------------------------------------------------- */
+router.post("/stock-check", async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: "IDs must be an array." });
+    }
+
+    const tyres = await Tyre.find({ _id: { $in: ids } })
+      .select("_id stock")
+      .lean();
+
+    return res.json(tyres);
+  } catch (err) {
+    console.error("❌ Error in /stock-check:", err);
+    return res.status(500).json({ error: "Failed to check stock" });
+  }
+});
 
 export default router;
