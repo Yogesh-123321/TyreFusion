@@ -1,8 +1,13 @@
 // controllers/orderController.js
 import Order from "../models/Order.js";
-import Tyre from "../models/Tyre.js"; // used to fetch canonical tyre size when missing
+import Tyre from "../models/Tyre.js";
 import User from "../models/User.js";
+
+// ✅ EXISTING
 import { sendOrderConfirmationEmail } from "../utils/sendOrderEmail.js";
+
+// ✅ NEW (ADD THIS)
+import { sendUpiPendingEmail } from "../utils/sendUpiPendingEmail.js";
 
 /* =========================================================
    CREATE NEW ORDER (USER)
@@ -13,7 +18,6 @@ export const createOrder = async (req, res) => {
       items: rawItems,
       shippingAddress,
       paymentMode,
-      paymentStatus,
     } = req.body;
 
     if (!rawItems || rawItems.length === 0) {
@@ -24,58 +28,45 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Payment mode is required" });
     }
 
-    /* -------- NORMALIZE ITEMS (PRESERVED LOGIC) -------- */
+    /* -------- NORMALIZE ITEMS -------- */
     const normalizedItems = [];
 
     for (const item of rawItems) {
       const tyreObj = item.tyre || {};
 
-      // Fill missing size from Tyre collection if possible
+      // Fill missing size
       if ((!tyreObj.size || tyreObj.size === "") && tyreObj._id) {
         try {
-          const tyreFromDb = await Tyre.findById(
-            String(tyreObj._id)
-          ).lean();
+          const tyreFromDb = await Tyre.findById(String(tyreObj._id)).lean();
           if (tyreFromDb?.size) tyreObj.size = tyreFromDb.size;
         } catch (err) {
-          console.warn(
-            "Tyre lookup failed for size fill:",
-            tyreObj._id,
-            err.message
-          );
+          console.warn("Tyre lookup failed:", err.message);
         }
       }
 
-      // ✅ Fetch tyre images from Tyre collection (authoritative source)
-let tyreImages = [];
+      // Fetch images from Tyre collection
+      let tyreImages = [];
+      if (tyreObj._id) {
+        try {
+          const tyreFromDb = await Tyre.findById(tyreObj._id)
+            .select("images")
+            .lean();
+          if (Array.isArray(tyreFromDb?.images)) {
+            tyreImages = tyreFromDb.images;
+          }
+        } catch (err) {
+          console.warn("Image fetch failed:", err.message);
+        }
+      }
 
-if (tyreObj._id) {
-  try {
-    const tyreFromDb = await Tyre.findById(tyreObj._id)
-      .select("images")
-      .lean();
-
-    if (Array.isArray(tyreFromDb?.images)) {
-      tyreImages = tyreFromDb.images;
-    }
-  } catch (err) {
-    console.warn(
-      "Failed to fetch tyre images:",
-      tyreObj._id,
-      err.message
-    );
-  }
-}
-
-const safeTyre = {
-  _id: tyreObj._id ? String(tyreObj._id) : "",
-  brand: tyreObj.brand || "",
-  title: tyreObj.title || "",
-  size: tyreObj.size || "",
-  price: tyreObj.price ?? item.price ?? 0,
-  images: tyreImages, // ✅ THIS IS THE KEY FIX
-};
-
+      const safeTyre = {
+        _id: tyreObj._id ? String(tyreObj._id) : "",
+        brand: tyreObj.brand || "",
+        title: tyreObj.title || "",
+        size: tyreObj.size || "",
+        price: tyreObj.price ?? item.price ?? 0,
+        images: tyreImages,
+      };
 
       normalizedItems.push({
         tyre: safeTyre,
@@ -87,8 +78,7 @@ const safeTyre = {
     /* -------- CALCULATE TOTAL -------- */
     const totalAmount =
       normalizedItems.reduce(
-        (acc, it) =>
-          acc + (it.price || 0) * (it.quantity || 1),
+        (acc, it) => acc + it.price * it.quantity,
         0
       ) || 0;
 
@@ -102,22 +92,32 @@ const safeTyre = {
       paymentStatus: "PENDING",
     });
 
-    /* -------- FETCH USER FOR EMAIL -------- */
-    const user = await User.findById(req.user._id).select(
-      "email name"
-    );
+    /* -------- FETCH USER -------- */
+    const user = await User.findById(req.user._id).select("email name");
 
-    /* -------- SEND EMAIL (NON-BLOCKING) -------- */
-    sendOrderConfirmationEmail({
-      to: user.email,
-      order,
-      user,
-    }).catch((err) => {
-      console.error(
-        "Order confirmation email failed:",
-        err.message
+    /* =====================================================
+       🔥 EMAIL LOGIC FIX (THIS IS THE MAIN CHANGE)
+    ===================================================== */
+
+    if (paymentMode === "COD") {
+      // ✅ COD → send confirmation immediately
+      sendOrderConfirmationEmail({
+        to: user.email,
+        order,
+        user,
+      }).catch((err) =>
+        console.error("COD email failed:", err.message)
       );
-    });
+    } else if (paymentMode === "UPI") {
+      // ✅ UPI → send payment pending email ONLY
+      sendUpiPendingEmail({
+        to: user.email,
+        order,
+        user,
+      }).catch((err) =>
+        console.error("UPI pending email failed:", err.message)
+      );
+    }
 
     res.status(201).json({
       message: "Order placed successfully",
@@ -134,32 +134,20 @@ const safeTyre = {
 ========================================================= */
 export const getUserOrders = async (req, res) => {
   try {
-    if (!req.user || !req.user._id) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: Missing user" });
-    }
-
-    const orders = await Order.find({
-      user: req.user._id,
-    })
+    const orders = await Order.find({ user: req.user._id })
       .sort({ createdAt: -1 })
       .lean();
 
-    const normalized = orders.map((o) => {
+    orders.forEach((o) => {
       o.items = o.items.map((it) => ({
         ...it,
         tyre: { ...it.tyre, size: it.tyre?.size || "" },
       }));
-      return o;
     });
 
-    res.json(normalized);
+    res.json(orders);
   } catch (err) {
-    console.error("Error fetching user orders:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch user orders" });
+    res.status(500).json({ message: "Failed to fetch user orders" });
   }
 };
 
@@ -173,20 +161,16 @@ export const getAllOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const normalized = orders.map((o) => {
+    orders.forEach((o) => {
       o.items = o.items.map((it) => ({
         ...it,
         tyre: { ...it.tyre, size: it.tyre?.size || "" },
       }));
-      return o;
     });
 
-    res.json(normalized);
-  } catch (err) {
-    console.error("Error fetching all orders:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch all orders" });
+    res.json(orders);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch all orders" });
   }
 };
 
@@ -200,9 +184,7 @@ export const getOrderById = async (req, res) => {
       .lean();
 
     if (!order)
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found" });
 
     order.items = order.items.map((it) => ({
       ...it,
@@ -210,38 +192,34 @@ export const getOrderById = async (req, res) => {
     }));
 
     res.json(order);
-  } catch (err) {
-    console.error("Error fetching order:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch order" });
+  } catch {
+    res.status(500).json({ message: "Failed to fetch order" });
   }
 };
-
 /* =========================================================
    ADMIN: UPDATE ORDER STATUS
 ========================================================= */
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findById(req.params.id);
 
+    const order = await Order.findById(req.params.id);
     if (!order)
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found" });
 
     order.status = status || order.status;
     await order.save();
 
-    res.json({ message: "Order status updated", order });
+    res.json({
+      message: "Order status updated successfully",
+      order,
+    });
   } catch (err) {
     console.error("Error updating order status:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to update order status" });
+    res.status(500).json({ message: "Failed to update order status" });
   }
 };
+
 /* =========================================================
    ADMIN: VERIFY UPI PAYMENT
 ========================================================= */
@@ -249,43 +227,32 @@ export const verifyUpiPayment = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
-    if (!order) {
+    if (!order)
       return res.status(404).json({ message: "Order not found" });
-    }
 
-    if (order.paymentMode !== "UPI") {
-      return res
-        .status(400)
-        .json({ message: "This order is not a UPI order" });
-    }
+    if (order.paymentMode !== "UPI")
+      return res.status(400).json({ message: "Not a UPI order" });
 
-    if (order.paymentStatus === "PAID") {
-      return res
-        .status(400)
-        .json({ message: "Payment already verified" });
-    }
+    if (order.paymentStatus === "PAID")
+      return res.status(400).json({ message: "Already verified" });
 
-    // ✅ Update statuses
     order.paymentStatus = "PAID";
     order.status = "Confirmed";
     await order.save();
 
-    // ✅ Send confirmation email
     const user = await User.findById(order.user).select("email name");
 
+    // ✅ FINAL CONFIRMATION EMAIL (ONLY ON VERIFY)
     sendOrderConfirmationEmail({
       to: user.email,
       order,
       user,
-    }).catch((err) => {
-      console.error("Confirmation email failed:", err.message);
-    });
+    }).catch((err) =>
+      console.error("Final confirmation email failed:", err.message)
+    );
 
-    res.json({
-      message: "Payment verified and order confirmed",
-    });
-  } catch (err) {
-    console.error("Verify payment error:", err);
+    res.json({ message: "Payment verified & order confirmed" });
+  } catch {
     res.status(500).json({ message: "Failed to verify payment" });
   }
 };
