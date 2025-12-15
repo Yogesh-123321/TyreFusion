@@ -2,24 +2,23 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Home from "@/pages/Home";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
+import Login from "@/pages/Login"; // ✅ OTP-based login
 import AdminDashboard from "@/pages/AdminDashboard";
-import ProtectedRoute from "@/components/ProtectedRoute"; // ✅ secure route
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Orders from "@/components/admin/Orders";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import CartPage from "@/pages/CartPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import MyOrdersPage from "@/pages/MyOrdersPage";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
-// ✅ Wrapper component to access useLocation safely inside Router
+// Wrapper to safely use useLocation
 function AppContent() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const { user } = useAuth();
-  const location = useLocation(); // <-- replaces window.location
+  const location = useLocation();
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle("dark");
@@ -30,7 +29,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
-      {/* Navbar hidden only on admin dashboard */}
       {!isAdminRoute && (
         <Navbar
           toggleTheme={toggleTheme}
@@ -44,13 +42,15 @@ function AppContent() {
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/my-orders" element={<MyOrdersPage />} />
+          <Route path="/my-orders" element={
+            <ProtectedRoute>
+              <MyOrdersPage />
+            </ProtectedRoute>
+          } />
 
-          {/* Protected Admin Route */}
-          {/* Protected Admin Routes */}
+          {/* Admin Routes */}
           <Route
             path="/admin/*"
             element={
@@ -59,10 +59,10 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
         </Routes>
-        {/* ✅ Global WhatsApp Button */}
-          <FloatingWhatsAppButton />
+
+        {/* Global WhatsApp Button */}
+        <FloatingWhatsAppButton />
       </main>
     </div>
   );
@@ -72,7 +72,7 @@ export default function App() {
   return (
     <Router>
       <CartProvider>
-      <AppContent />
+        <AppContent />
       </CartProvider>
     </Router>
   );

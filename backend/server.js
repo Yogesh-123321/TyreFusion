@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ path: "./.env", override: true });
 
 import express from "express";
 import cors from "cors";
@@ -7,13 +7,16 @@ import mongoose from "mongoose";
 
 import orderRoutes from "./routes/orderRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import otpAuthRoutes from "./routes/otpAuth.js";
 import tyreRoutes from "./routes/tyreRoutes.js";
 import carRoutes from "./routes/carRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import wheelFitmentRoute from "./routes/wheelFitmentRoute.js";
 import wheelSizeRoutes from "./routes/wheelsizeRoutes.js";
 import aiSearchRoute from "./routes/aiSearch.js";
+import testEmailRoute from "./routes/testEmail.js";
+
+console.log("EMAIL_USER =", process.env.EMAIL_USER);
+console.log("EMAIL_PASS =", process.env.EMAIL_PASS ? "SET" : "MISSING");
 
 console.log("🔑 Loaded Wheel-Size key:", process.env.WHEELSIZE_API_KEY);
 console.log("🔑 Loaded OpenRouter key:", process.env.OPENROUTER_API_KEY);
@@ -27,7 +30,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/auth/otp", otpAuthRoutes);
 app.use("/api/tyres", tyreRoutes);
 app.use("/api/makes", carRoutes);
 app.use("/api/admin", adminRoutes);
@@ -35,6 +37,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/wheels", wheelFitmentRoute);
 app.use("/api/wheelsize", wheelSizeRoutes);
 app.use("/api/ai-search", aiSearchRoute);
+app.use("/api/test", testEmailRoute);
 
 // MongoDB
 mongoose

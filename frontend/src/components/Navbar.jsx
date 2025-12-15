@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Moon, Sun, Menu, X } from "lucide-react";
+import { ShoppingCart, Moon, Sun, Menu, X, Phone } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,13 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
   const { cart } = useCart();
   const navigate = useNavigate();
 
-  // FIXED: Correct total items count based on quantity
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const HELPLINE =
+    import.meta.env.VITE_HELPLINE_NUMBER || "+91XXXXXXXXXX";
+
+  const totalItems = cart.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -62,20 +67,12 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
           </Link>
 
           {!user ? (
-            <>
-              <Link
-                to="/login"
-                className="text-sm font-semibold hover:text-orange-500 transition"
-              >
-                Login
-              </Link>
-              <Link
-                to="/signup"
-                className="text-sm font-semibold hover:text-orange-500 transition"
-              >
-                Signup
-              </Link>
-            </>
+            <Link
+              to="/login"
+              className="text-sm font-semibold hover:text-orange-500 transition"
+            >
+              Login
+            </Link>
           ) : (
             <>
               <Link
@@ -93,6 +90,17 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
             </>
           )}
 
+          {/* HELPLINE (CLICKABLE) */}
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Phone className="w-4 h-4 text-orange-500" />
+            <a
+              href={`tel:${HELPLINE}`}
+              className="hover:underline hover:text-orange-500 transition"
+            >
+              {HELPLINE}
+            </a>
+          </div>
+
           {/* CART */}
           <Link to="/cart" className="relative cursor-pointer">
             <ShoppingCart
@@ -100,13 +108,8 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 isDarkMode ? "text-orange-400" : "text-orange-600"
               } hover:opacity-80 transition`}
             />
-
-            {/* UPDATED → Show totalItems instead of cart.length */}
             {totalItems > 0 && (
-              <span
-                key={totalItems}
-                className="absolute -top-2 -right-2 bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse"
-              >
+              <span className="absolute -top-2 -right-2 bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
                 {totalItems}
               </span>
             )}
@@ -145,17 +148,14 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
       {/* MOBILE MENU DRAWER */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Overlay */}
           <div
             className="flex-1 bg-black/50"
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Drawer */}
           <div
             className={`w-72 shadow-xl p-6 animate-slideInRight ${drawerClasses}`}
           >
-            {/* Close button */}
             <button
               className={`mb-6 p-2 rounded-lg ${
                 isDarkMode ? "bg-gray-800" : "bg-gray-300"
@@ -169,7 +169,6 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
               />
             </button>
 
-            {/* Mobile Nav Links */}
             <div className="flex flex-col gap-4">
               <Link
                 to="/"
@@ -180,22 +179,13 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
               </Link>
 
               {!user ? (
-                <>
-                  <Link
-                    to="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-lg font-semibold hover:text-orange-500 transition"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-lg font-semibold hover:text-orange-500 transition"
-                  >
-                    Signup
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-lg font-semibold hover:text-orange-500 transition"
+                >
+                  Login
+                </Link>
               ) : (
                 <>
                   <Link
@@ -214,11 +204,22 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 </>
               )}
 
-              {/* UPDATED MOBILE CART INDICATOR */}
+              {/* MOBILE HELPLINE (CLICKABLE) */}
+              <div className="flex items-center gap-3 mt-4 text-lg font-semibold">
+                <Phone className="w-5 h-5 text-orange-500" />
+                <a
+                  href={`tel:${HELPLINE}`}
+                  className="hover:underline hover:text-orange-500 transition"
+                >
+                  {HELPLINE}
+                </a>
+              </div>
+
+              {/* MOBILE CART */}
               <Link
                 to="/cart"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 mt-2"
+                className="flex items-center gap-3 mt-4"
               >
                 <ShoppingCart
                   className={`w-6 h-6 ${
@@ -226,7 +227,6 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                   }`}
                 />
                 <span className="text-lg font-semibold">Cart</span>
-
                 {totalItems > 0 && (
                   <span className="bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full ml-auto animate-pulse">
                     {totalItems}
@@ -234,7 +234,7 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 )}
               </Link>
 
-              {/* Theme Toggle */}
+              {/* THEME TOGGLE */}
               <button
                 onClick={toggleTheme}
                 className={`mt-4 p-3 rounded-lg flex items-center gap-3 ${

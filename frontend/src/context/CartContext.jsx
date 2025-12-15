@@ -62,31 +62,48 @@ export const CartProvider = ({ children }) => {
      ADD TO CART (with stock safety)
   ------------------------------------------------------ */
   const addToCart = (tyre) => {
-    const qtyToAdd = tyre.quantity ? Number(tyre.quantity) : 1;
-    const stock = Number(tyre.stock ?? 0);
+  const qtyToAdd = tyre.quantity ? Number(tyre.quantity) : 1;
+  const stock = Number(tyre.stock ?? 0);
 
-    setCart((prev) => {
-      const existing = prev.find((item) => item._id === tyre._id);
+  setCart((prev) => {
+    const existing = prev.find((item) => item._id === tyre._id);
 
-      if (existing) {
-        const newQty = existing.quantity + qtyToAdd;
+    if (existing) {
+      const newQty = existing.quantity + qtyToAdd;
 
-        if (newQty > stock) {
-          alert(`Only ${stock} units available in stock.`);
-          return prev.map((item) =>
-            item._id === tyre._id ? { ...item, quantity: stock } : item
-          );
-        }
-
+      if (newQty > stock) {
+        alert(`Only ${stock} units available in stock.`);
         return prev.map((item) =>
-          item._id === tyre._id ? { ...item, quantity: newQty } : item
+          item._id === tyre._id ? { ...item, quantity: stock } : item
         );
       }
 
-      const initialQty = Math.min(qtyToAdd, stock);
-      return [...prev, { ...tyre, quantity: initialQty }];
-    });
-  };
+      return prev.map((item) =>
+        item._id === tyre._id
+          ? { ...item, quantity: newQty }
+          : item
+      );
+    }
+
+    const initialQty = Math.min(qtyToAdd, stock);
+
+    // ✅ NORMALIZED CART ITEM (THIS FIXES EVERYTHING)
+    const normalizedTyre = {
+      _id: tyre._id,
+      brand: tyre.brand,
+      title: tyre.title,
+      size: tyre.size,
+      price: tyre.price,
+      stock,
+      warranty_months: tyre.warranty_months,
+      images: Array.isArray(tyre.images) ? tyre.images : [], // ✅ KEY FIX
+      quantity: initialQty,
+    };
+
+    return [...prev, normalizedTyre];
+  });
+};
+
 
   /* -----------------------------------------------------
      UPDATE QUANTITY

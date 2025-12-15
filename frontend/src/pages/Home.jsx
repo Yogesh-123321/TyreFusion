@@ -1,5 +1,15 @@
 // src/pages/Home.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Loader from "@/components/Loader";
@@ -351,6 +361,9 @@ const [quantities, setQuantities] = useState({});
   const [variants, setVariants] = useState([]);
   const [sizes, setSizes] = useState([]);
 
+const navigate = useNavigate();
+const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+
   const [selectedMake, setSelectedMake] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
@@ -380,9 +393,11 @@ const [quantities, setQuantities] = useState({});
   /* Add to cart helper */
   const handleAddToCart = (tyre) => {
     if (!token) {
-      alert("Please login to add items to cart.");
-      return;
-    }
+      console.log("LOGIN BLOCK TRIGGERED");
+  setLoginDialogOpen(true);
+  return;
+}
+
     addToCart(tyre);
   };
 
@@ -1201,6 +1216,51 @@ const [quantities, setQuantities] = useState({});
           </div>
         </div>
       )}
+<Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+  <DialogContent
+  className="
+    max-w-md
+    border
+    bg-white text-gray-900
+    shadow-2xl
+    rounded-xl
+
+    dark:bg-gray-900
+    dark:text-gray-100
+    dark:border-gray-700
+  "
+>
+    <DialogHeader>
+      <DialogTitle className="text-xl">
+        Login Required
+      </DialogTitle>
+
+      <DialogDescription className="text-gray-600 dark:text-gray-400">
+        You need to be logged in to add items to your cart.
+        Please continue to the login page.
+      </DialogDescription>
+    </DialogHeader>
+
+    <DialogFooter className="mt-4">
+      <Button
+        variant="outline"
+        onClick={() => setLoginDialogOpen(false)}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        className="bg-orange-600 hover:bg-orange-700 text-white"
+        onClick={() => {
+          setLoginDialogOpen(false);
+          navigate("/login");
+        }}
+      >
+        Go to Login
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       <FloatingWhatsAppButton />
     </>

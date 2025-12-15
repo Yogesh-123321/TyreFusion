@@ -1,37 +1,53 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-const secret = process.env.JWT_SECRET || "tyrefusion_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET||"tyrefusion_secret_key";
 
-export async function auth(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header) {
-    return res.status(401).json({ error: "No token provided" });
-  }
+if (!JWT_SECRET) {
+  console.error("❌ JWT_SECRET missing in .env");
+}
 
-  const token = header.split(" ")[1];
+/* =====================================================
+   AUTH — VERIFY JWT
+===================================================== */
+export const auth = async (req, res, next) => {
   try {
-    const payload = jwt.verify(token, secret);
+    const header = req.headers.authorization;
 
-    const user = await User.findById(payload.id).select("-password");
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = header.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const user = await User.findById(decoded.id).select(
+      "_id name email role isVerified"
+    );
+
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      return res.status(401).json({ message: "User not found" });
     }
 
     req.user = user;
     next();
   } catch (err) {
     console.error("JWT Verification Failed:", err.message);
-    return res.status(401).json({ error: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
-}
+};
 
-export function adminOnly(req, res, next) {
+/* =====================================================
+   ADMIN ONLY
+===================================================== */
+export const adminOnly = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ message: "Not authenticated" });
   }
+
   if (req.user.role !== "admin") {
-    return res.status(403).json({ error: "Admin only" });
+    return res.status(403).json({ message: "Admin access only" });
   }
+
   next();
-}
+};

@@ -105,7 +105,13 @@ export default function MyOrdersPage() {
                     const tyre = item.tyre || {};
                     const key = item._id || `${order._id}-item-${idx}`;
                     const size = tyre.size || item.size || "—";
-                    const image = tyre.image || "/tyre.png";
+                    const image =
+  Array.isArray(tyre.images) && tyre.images.length > 0
+    ? tyre.images[0]
+    : "/tyre.png";
+console.log("ORDER ITEM:", item);
+console.log("TYRE OBJECT:", item.tyre);
+
 
                     return (
                       <div

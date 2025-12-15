@@ -19,6 +19,15 @@ const CLOUDINARY_URL =
   (CLOUD_NAME && UPLOAD_PRESET
     ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
     : "");
+// FRONTEND-ONLY: Deduplicate tyres by SKU / identity
+const dedupeTyres = (list = []) => {
+  const map = new Map();
+  list.forEach((t) => {
+    const key = t._id || `${t.brand}-${t.size}-${t.title}`;
+    if (!map.has(key)) map.set(key, t);
+  });
+  return [...map.values()];
+};
 
 export default function TyreManager({ darkMode }) {
   const { token } = useAuth();
@@ -97,7 +106,8 @@ export default function TyreManager({ darkMode }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setTyres(Array.isArray(data) ? data : []);
+      setTyres(dedupeTyres(Array.isArray(data) ? data : []));
+
     } catch (err) {
       console.error("Failed to fetch tyres", err);
     }
@@ -294,7 +304,10 @@ export default function TyreManager({ darkMode }) {
 
     fetch(`${API_BASE}/tyres?size=${encodeURIComponent(query)}`)
       .then((r) => r.json())
-      .then((data) => setSearchResults(Array.isArray(data) ? data : []))
+      .then((data) =>
+  setSearchResults(dedupeTyres(Array.isArray(data) ? data : []))
+)
+
       .finally(() => setSearchLoading(false));
   };
 
@@ -384,12 +397,21 @@ export default function TyreManager({ darkMode }) {
                 </div>
 
                 <p className="mt-2 font-bold">₹{tyre.price}</p>
-                <Button
-                  onClick={() => handleEditClick(tyre)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white mt-2"
-                >
-                  Edit
-                </Button>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    onClick={() => handleEditClick(tyre)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    onClick={() => handleDelete(tyre._id)}
+                    variant="destructive"
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

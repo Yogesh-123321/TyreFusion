@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
+
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -18,51 +20,115 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+/* -------------------------------------------------------
+   Helpers for colored badges
+------------------------------------------------------- */
+const statusColor = (status) => {
+  switch (status) {
+    case "Pending":
+      return "bg-yellow-500 text-black";
+    case "Confirmed":
+      return "bg-blue-500 text-white";
+    case "Shipped":
+      return "bg-indigo-500 text-white";
+    case "Delivered":
+      return "bg-green-600 text-white";
+    case "Cancelled":
+      return "bg-red-600 text-white";
+    default:
+      return "bg-gray-500 text-white";
+  }
+};
+
+const paymentColor = (status) =>
+  status === "PAID"
+    ? "bg-green-600 text-white"
+    : "bg-yellow-500 text-black";
+
 const Orders = ({ darkMode }) => {
+  const { token, loading: authLoading } = useAuth();
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const token = localStorage.getItem("token");
 
   const API_BASE = import.meta.env.VITE_API_BASE;
 
+  /* =========================================================
+     FETCH ALL ORDERS (ADMIN)
+  ========================================================= */
   const fetchOrders = async () => {
+    if (!token) return;
+
     try {
+      setLoading(true);
+
       const res = await axios.get(`${API_BASE}/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setOrders(Array.isArray(res.data) ? res.data : []);
-      setLoading(false);
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load orders");
+      setError(
+        err.response?.data?.message || "Failed to load orders"
+      );
+    } finally {
       setLoading(false);
     }
   };
 
-  const updateStatus = async (id, status) => {
+  /* =========================================================
+     UPDATE ORDER STATUS
+  ========================================================= */
+  const updateStatus = async (orderId, status) => {
     try {
       await axios.put(
-        `${API_BASE}/orders/${id}/status`,
+        `${API_BASE}/orders/${orderId}/status`,
         { status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchOrders();
+    } catch {
+      alert("Failed to update order status");
+    }
+  };
+
+  /* =========================================================
+     VERIFY UPI PAYMENT
+  ========================================================= */
+  const verifyUpiPayment = async (orderId) => {
+    try {
+      await axios.put(
+        `${API_BASE}/orders/${orderId}/verify-payment`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Payment verified & confirmation email sent");
+      fetchOrders();
     } catch (err) {
-      alert("Failed to update status");
+      alert(err.response?.data?.message || "UPI verification failed");
     }
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (!authLoading && token) fetchOrders();
+  }, [authLoading, token]);
 
-  if (loading)
-    return <p className="text-center mt-6 text-gray-400">Loading orders...</p>;
+  if (authLoading || loading) {
+    return (
+      <p className="text-center mt-6 text-gray-400">
+        Loading orders…
+      </p>
+    );
+  }
 
-  if (error)
-    return <p className="text-center mt-6 text-red-500">{error}</p>;
+  if (error) {
+    return (
+      <p className="text-center mt-6 text-red-500">{error}</p>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6">
@@ -74,227 +140,175 @@ const Orders = ({ darkMode }) => {
         All Orders
       </h2>
 
-      {Array.isArray(orders) && orders.length > 0 ? (
+      {orders.length === 0 ? (
+        <p className="text-center text-gray-400 mt-6">
+          No orders found.
+        </p>
+      ) : (
         <div className="space-y-4">
           {orders.map((order) => {
-            const sizes = Array.from(
-              new Set(
-                (order.items || [])
-                  .map((it) => (it.tyre?.size || it.size || "").trim())
-                  .filter(Boolean)
-              )
+            const totalQty = (order.items || []).reduce(
+              (sum, i) => sum + (i.quantity || 0),
+              0
             );
 
             return (
               <Card
                 key={order._id}
-                className={`border transition ${
+                className={`border ${
                   darkMode
-                    ? "bg-black border-gray-700 text-white"
+                    ? "bg-black border-gray-700 text-gray-100"
                     : "bg-white border-orange-200 text-gray-900"
                 }`}
               >
-                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  {/* LEFT SECTION */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 break-all">
+                <CardContent className="p-4 flex flex-col sm:flex-row sm:justify-between gap-4">
+                  {/* LEFT */}
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs dark:text-gray-400 text-gray-500 break-all">
                       Order ID: {order._id}
                     </p>
-                    <p className="text-sm sm:text-base">
-                      User: {order.user?.name || "Guest"}
+
+                    <p className="font-medium">
+                      User: {order.user?.email}
                     </p>
-                    <p className="text-sm sm:text-base">
+
+                    <p className="font-medium">
                       Total: ₹{order.totalAmount}
                     </p>
 
-                    <p className="text-sm sm:text-base">
-                      Status:{" "}
+                    <p className="font-medium">
+                      Qty: {totalQty}
+                    </p>
+
+                    <div className="flex gap-2 items-center flex-wrap">
                       <span
-                        className={`font-semibold ${
-                          order.status === "Delivered"
-                            ? "text-green-400"
-                            : order.status === "Cancelled"
-                            ? "text-red-400"
-                            : "text-orange-300"
-                        }`}
+                        className={`px-2 py-1 rounded text-xs ${paymentColor(
+                          order.paymentStatus
+                        )}`}
+                      >
+                        {order.paymentMode} / {order.paymentStatus}
+                      </span>
+
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${statusColor(
+                          order.status
+                        )}`}
                       >
                         {order.status}
                       </span>
-                    </p>
+                    </div>
 
-                    <p className="text-xs text-gray-400 mt-1">
-                      Created: {new Date(order.createdAt).toLocaleString()}
-                    </p>
-
-                    <p className="mt-2 text-xs sm:text-sm text-gray-400">
-                      <span className="font-semibold text-gray-300">
-                        Sizes:
-                      </span>{" "}
-                      {sizes.length ? sizes.join(", ") : "—"}
+                    <p className="text-xs dark:text-gray-400 text-gray-500">
+                      {new Date(order.createdAt).toLocaleString()}
                     </p>
                   </div>
 
-                  {/* RIGHT SECTION — Responsive Controls */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  {/* RIGHT */}
+                  <div className="flex flex-col gap-2 w-full sm:w-auto">
                     <Select
                       onValueChange={(status) =>
                         updateStatus(order._id, status)
                       }
                     >
-                      <SelectTrigger
-                        className={`rounded-md border px-3 py-2 text-sm font-medium shadow-sm w-full sm:w-auto ${
-                          darkMode
-                            ? "bg-gray-900 text-white border-gray-700 hover:bg-gray-800 focus:ring-orange-500"
-                            : "bg-white text-gray-900 border-gray-300 hover:bg-orange-50 focus:ring-orange-400"
-                        }`}
-                      >
+                      <SelectTrigger>
                         <SelectValue placeholder="Change Status" />
                       </SelectTrigger>
-
-                      <SelectContent
-                        className={`border rounded-md ${
-                          darkMode
-                            ? "bg-gray-900 border-gray-700 text-white"
-                            : "bg-white border-gray-300 text-gray-900"
-                        }`}
-                      >
-                        {["Pending", "Shipped", "Delivered", "Cancelled"].map(
-                          (status) => (
-                            <SelectItem
-                              key={status}
-                              value={status}
-                              className={`cursor-pointer px-3 py-2 ${
-                                darkMode
-                                  ? "hover:bg-orange-600/20 text-white"
-                                  : "hover:bg-orange-100 text-gray-900"
-                              }`}
-                            >
-                              {status}
-                            </SelectItem>
-                          )
-                        )}
+                      <SelectContent>
+                        {[
+                          "Pending",
+                          "Confirmed",
+                          "Shipped",
+                          "Delivered",
+                          "Cancelled",
+                        ].map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
+                    {order.paymentMode === "UPI" &&
+                      order.paymentStatus === "PENDING" && (
+                        <Button
+                          onClick={() =>
+                            verifyUpiPayment(order._id)
+                          }
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          Verify UPI Payment
+                        </Button>
+                      )}
+
                     <button
-                      onClick={() => setSelectedOrder(order)}
-                      className={`px-4 py-2 rounded-md text-sm font-semibold border shadow-sm w-full sm:w-auto
-                        ${
-                          darkMode
-                            ? "text-orange-400 border-orange-400 hover:bg-orange-500 hover:text-white"
-                            : "text-orange-600 border-orange-500 hover:bg-orange-100 hover:text-orange-700"
-                        }`}
-                    >
-                      View
-                    </button>
+  onClick={() => setSelectedOrder(order)}
+  className={
+    darkMode
+      ? "px-4 py-2 rounded-md border border-orange-500 text-orange-400 hover:bg-orange-500/10 font-semibold"
+      : "px-4 py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600 font-semibold shadow"
+  }
+>
+  View Details
+</button>
+
+
+
+
+
                   </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
-      ) : (
-        <p className="text-center text-gray-400 mt-6">No orders found.</p>
       )}
 
-      {/* ORDER DETAILS DIALOG */}
+      {/* ORDER DETAILS MODAL */}
       <Dialog
         open={!!selectedOrder}
         onOpenChange={() => setSelectedOrder(null)}
       >
         <DialogContent
-          className={`w-[90%] sm:max-w-lg ${
-            darkMode ? "bg-gray-950 text-white" : "bg-white text-gray-900"
-          }`}
+          className={
+            darkMode
+              ? "bg-gray-950 text-gray-100"
+              : "bg-white text-gray-900"
+          }
         >
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-orange-500">
-              Order Details
-            </DialogTitle>
+            <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
-              Complete information for this order.
+              Complete item breakdown
             </DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (
-            <div className="space-y-3 text-sm sm:text-base">
-              <p>
-                <span className="font-semibold">Order ID:</span>{" "}
-                {selectedOrder._id}
-              </p>
-              <p>
-                <span className="font-semibold">User:</span>{" "}
-                {selectedOrder.user?.name || "Guest"}
-              </p>
-              <p>
-                <span className="font-semibold">Email:</span>{" "}
-                {selectedOrder.user?.email || "N/A"}
-              </p>
-              <p>
-                <span className="font-semibold">Status:</span>{" "}
-                {selectedOrder.status}
-              </p>
-              <p>
-                <span className="font-semibold">Total:</span> ₹
-                {selectedOrder.totalAmount}
-              </p>
-              <p>
-                <span className="font-semibold">Created:</span>{" "}
-                {new Date(selectedOrder.createdAt).toLocaleString()}
-              </p>
+            <div className="space-y-3 text-sm">
+              <p><strong>Order ID:</strong> {selectedOrder._id}</p>
+              <p><strong>Email:</strong> {selectedOrder.user?.email}</p>
+              <p><strong>Total:</strong> ₹{selectedOrder.totalAmount}</p>
 
-              {/* SHIPPING ADDRESS */}
-              {selectedOrder.shippingAddress && (
-                <div>
-                  <h4 className="font-semibold mt-3 text-orange-400">
-                    Shipping Address
-                  </h4>
-                  <p>{selectedOrder.shippingAddress.fullName}</p>
-                  <p>{selectedOrder.shippingAddress.phone}</p>
-                  <p>{selectedOrder.shippingAddress.address}</p>
-                  <p>
-                    {selectedOrder.shippingAddress.city},{" "}
-                    {selectedOrder.shippingAddress.state} -{" "}
-                    {selectedOrder.shippingAddress.pincode}
-                  </p>
-                </div>
-              )}
-
-              {/* ITEMS */}
-              {selectedOrder.items?.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mt-3 text-orange-400">Items</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    {selectedOrder.items.map((item, idx) => {
-                      const size =
-                        (item.tyre?.size || item.size || "").trim() || "—";
-
-                      return (
-                        <li key={idx} className="text-sm sm:text-base">
-                          <span className="font-medium">
-                            {item.tyre?.brand || ""}
-                          </span>{" "}
-                          {item.tyre?.title && `(${item.tyre.title})`}{" "}
-                          <span className="text-gray-400">— Size: {size}</span>{" "}
-                          × {item.quantity} — ₹{item.price}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
+              <div className="border-t pt-2">
+                <p className="font-semibold mb-1">Items</p>
+                {selectedOrder.items.map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between text-xs dark:text-gray-300"
+                  >
+                    <span>
+                      {item.tyre?.brand} {item.tyre?.size}
+                    </span>
+                    <span>
+                      Qty: {item.quantity} × ₹{item.price}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          <DialogFooter className="mt-4">
-            <Button
-              onClick={() => setSelectedOrder(null)}
-              className={`px-4 py-2 ${
-                darkMode
-                  ? "bg-orange-600 hover:bg-orange-700 text-white"
-                  : "bg-orange-500 hover:bg-orange-600 text-white"
-              }`}
-            >
+          <DialogFooter>
+            <Button onClick={() => setSelectedOrder(null)}>
               Close
             </Button>
           </DialogFooter>

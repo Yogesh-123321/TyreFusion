@@ -1,11 +1,13 @@
 import express from "express";
 import {
   createOrder,
-  getUserOrders,     // ✅ renamed for clarity (user’s own orders)
-  getAllOrders,      // ✅ admin: all orders
-  getOrderById,      // ✅ admin: single order details
-  updateOrderStatus, // ✅ admin: update order status
+  getUserOrders,
+  getAllOrders,
+  getOrderById,
+  updateOrderStatus,
+  verifyUpiPayment, // ✅ add this
 } from "../controllers/orderController.js";
+
 import { auth, adminOnly } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -29,5 +31,6 @@ router.get("/:id", auth, adminOnly, getOrderById);
 
 // ✅ Update an order’s status (admin only)
 router.put("/:id/status", auth, adminOnly, updateOrderStatus);
+router.put("/:id/verify-payment", auth, adminOnly, verifyUpiPayment);
 
 export default router;

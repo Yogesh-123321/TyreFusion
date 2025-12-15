@@ -2,18 +2,35 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: {
+      type: String,
+      trim: true,
+    },
 
-    email: { type: String, required: true, unique: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
 
-    passwordHash: { type: String, required: true }, // existing login stays
+    phone: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
 
-    // 🔽 ADD FOR WHATSAPP OTP LOGIN
-    phone: { type: String, unique: true, sparse: true },
-    otp: { type: String },
-    otpExpiresAt: { type: Date },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
 
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
