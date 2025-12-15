@@ -17,6 +17,7 @@ import testEmailRoute from "./routes/testEmail.js";
 
 console.log("EMAIL_USER =", process.env.EMAIL_USER);
 console.log("EMAIL_PASS =", process.env.EMAIL_PASS ? "SET" : "MISSING");
+console.log("🔑 RESEND_API_KEY =", process.env.RESEND_API_KEY);
 
 console.log("🔑 Loaded Wheel-Size key:", process.env.WHEELSIZE_API_KEY);
 console.log("🔑 Loaded OpenRouter key:", process.env.OPENROUTER_API_KEY);
