@@ -11,9 +11,9 @@ export const sendUpiPendingEmail = async ({ to, order, user }) => {
     "Customer";
 
   await resend.emails.send({
-    from: "TyreFusion <orders@tyrefusion.in>",
+    from: "TyreKing <orders@tyrefusion.in>",
     to,
-    subject: "TyreFusion – UPI Payment Pending",
+    subject: "TyreKing – UPI Payment Pending",
     html: `
       <div style="font-family: Arial, sans-serif; color:#333;">
         <h2 style="color:#f97316;">UPI Payment Pending</h2>
@@ -44,7 +44,7 @@ export const sendUpiPendingEmail = async ({ to, order, user }) => {
         </p>
 
         <p style="margin-top:20px;">
-          — Team <b>TyreFusion</b>
+          — Team <b>TyreKing</b>
         </p>
       </div>
     `,

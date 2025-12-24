@@ -668,9 +668,21 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
   return (
     <>
+{/* FULL-WIDTH TOP BANNER - FIXED HEIGHT ON DESKTOP */}
+{/* FULL-WIDTH TOP BANNER - NATURAL HEIGHT (No Cropping) */}
+<section className="w-full">
+  <img
+    src="/home-top.png"
+    alt="Tyre promo banner"
+    // w-full = Stretches to touch left and right edges
+    // h-auto = Calculates the exact height needed to show the WHOLE image (Top to Bottom)
+    className="w-full h-auto block"
+  />
+</section>
       <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+
         <h1 className="text-2xl sm:text-3xl font-bold text-center">
-          Tyre Finder
+          Discover Compatible Tyres
         </h1>
 
         {/* Tabs */}

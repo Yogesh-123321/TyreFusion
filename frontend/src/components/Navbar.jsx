@@ -43,17 +43,22 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
         {/* LEFT — LOGO */}
         <div className="flex items-center gap-3">
           <img
-            src="/tyrefusion-logo.png"
-            alt="TyreFusion Logo"
-            className="w-10 h-10 object-contain"
-          />
+  src={
+    isDarkMode
+      ? "/tyrefusion-logo-dark.png"
+      : "/tyrefusion-logo-light.png"
+  }
+  alt="TyreFusion Logo"
+  className="w-10 h-10 object-contain transition-all"
+/>
+
           <Link
             to="/"
             className={`text-2xl font-extrabold tracking-wide ${
               isDarkMode ? "text-orange-400" : "text-orange-600"
             } hover:opacity-80 transition`}
           >
-            TyreFusion
+            TyreKing
           </Link>
         </div>
 
