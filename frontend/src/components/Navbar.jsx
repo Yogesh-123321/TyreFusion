@@ -43,14 +43,14 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
         {/* LEFT — LOGO */}
         <div className="flex items-center gap-3">
           <img
-  src={
-    isDarkMode
-      ? "/tyrefusion-logo-dark.png"
-      : "/tyrefusion-logo-light.png"
-  }
-  alt="TyreFusion Logo"
-  className="w-10 h-10 object-contain transition-all"
-/>
+            src={
+              isDarkMode
+                ? "/tyrefusion-logo-dark.png"
+                : "/tyrefusion-logo-light.png"
+            }
+            alt="TyreFusion Logo"
+            className="w-10 h-10 object-contain transition-all"
+          />
 
           <Link
             to="/"
@@ -95,16 +95,15 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
             </>
           )}
 
-          {/* HELPLINE (CLICKABLE) */}
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Phone className="w-4 h-4 text-orange-500" />
-            <a
-              href={`tel:${HELPLINE}`}
-              className="hover:underline hover:text-orange-500 transition"
-            >
-              {HELPLINE}
-            </a>
-          </div>
+          {/* HELP ICON (CALL) */}
+          <button
+            onClick={() => (window.location.href = `tel:${HELPLINE}`)}
+            className="flex items-center gap-2 text-sm font-semibold hover:text-orange-500 transition"
+            title="Call Support"
+          >
+            <Phone className="w-5 h-5 text-orange-500" />
+            <span>Help</span>
+          </button>
 
           {/* CART */}
           <Link to="/cart" className="relative cursor-pointer">
@@ -135,19 +134,36 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
           </button>
         </div>
 
-        {/* MOBILE MENU BUTTON */}
-        <button
-          className={`md:hidden p-2 rounded-lg ${
-            isDarkMode ? "bg-gray-800" : "bg-gray-200"
-          } hover:opacity-80 transition`}
-          onClick={() => setMobileMenuOpen(true)}
-        >
-          <Menu
-            className={`w-6 h-6 ${
-              isDarkMode ? "text-orange-400" : "text-orange-600"
-            }`}
-          />
-        </button>
+        {/* MOBILE RIGHT SECTION (CART + MENU) */}
+        <div className="flex items-center gap-3 md:hidden">
+          {/* MOBILE CART */}
+          <Link to="/cart" className="relative">
+            <ShoppingCart
+              className={`w-7 h-7 ${
+                isDarkMode ? "text-orange-400" : "text-orange-600"
+              }`}
+            />
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+                {totalItems}
+              </span>
+            )}
+          </Link>
+
+          {/* MOBILE MENU BUTTON */}
+          <button
+            className={`p-2 rounded-lg ${
+              isDarkMode ? "bg-gray-800" : "bg-gray-200"
+            } hover:opacity-80 transition`}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu
+              className={`w-6 h-6 ${
+                isDarkMode ? "text-orange-400" : "text-orange-600"
+              }`}
+            />
+          </button>
+        </div>
       </nav>
 
       {/* MOBILE MENU DRAWER */}
@@ -209,35 +225,14 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
                 </>
               )}
 
-              {/* MOBILE HELPLINE (CLICKABLE) */}
-              <div className="flex items-center gap-3 mt-4 text-lg font-semibold">
-                <Phone className="w-5 h-5 text-orange-500" />
-                <a
-                  href={`tel:${HELPLINE}`}
-                  className="hover:underline hover:text-orange-500 transition"
-                >
-                  {HELPLINE}
-                </a>
-              </div>
-
-              {/* MOBILE CART */}
-              <Link
-                to="/cart"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 mt-4"
+              {/* HELPLINE INSIDE MOBILE DRAWER */}
+              <button
+                onClick={() => (window.location.href = `tel:${HELPLINE}`)}
+                className="flex items-center gap-3 mt-4 text-lg font-semibold hover:text-orange-500 transition"
               >
-                <ShoppingCart
-                  className={`w-6 h-6 ${
-                    isDarkMode ? "text-orange-400" : "text-orange-600"
-                  }`}
-                />
-                <span className="text-lg font-semibold">Cart</span>
-                {totalItems > 0 && (
-                  <span className="bg-orange-500 text-xs font-bold px-2 py-0.5 rounded-full ml-auto animate-pulse">
-                    {totalItems}
-                  </span>
-                )}
-              </Link>
+                <Phone className="w-5 h-5 text-orange-500" />
+                <span>Help</span>
+              </button>
 
               {/* THEME TOGGLE */}
               <button
