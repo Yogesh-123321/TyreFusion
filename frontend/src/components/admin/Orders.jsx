@@ -71,9 +71,7 @@ const Orders = ({ darkMode }) => {
       setOrders(Array.isArray(res.data) ? res.data : []);
       setError("");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to load orders"
-      );
+      setError(err.response?.data?.message || "Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -210,10 +208,23 @@ const Orders = ({ darkMode }) => {
                         updateStatus(order._id, status)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        className={
+                          darkMode
+                            ? "bg-gray-900 border border-gray-700 text-gray-100"
+                            : "bg-white border border-gray-300 text-gray-900"
+                        }
+                      >
                         <SelectValue placeholder="Change Status" />
                       </SelectTrigger>
-                      <SelectContent>
+
+                      <SelectContent
+                        className={
+                          darkMode
+                            ? "bg-gray-900 text-gray-100 border border-gray-700"
+                            : "bg-white text-gray-900 border border-gray-200"
+                        }
+                      >
                         {[
                           "Pending",
                           "Confirmed",
@@ -231,9 +242,7 @@ const Orders = ({ darkMode }) => {
                     {order.paymentMode === "UPI" &&
                       order.paymentStatus === "PENDING" && (
                         <Button
-                          onClick={() =>
-                            verifyUpiPayment(order._id)
-                          }
+                          onClick={() => verifyUpiPayment(order._id)}
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
                           Verify UPI Payment
@@ -241,20 +250,15 @@ const Orders = ({ darkMode }) => {
                       )}
 
                     <button
-  onClick={() => setSelectedOrder(order)}
-  className={
-    darkMode
-      ? "px-4 py-2 rounded-md border border-orange-500 text-orange-400 hover:bg-orange-500/10 font-semibold"
-      : "px-4 py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600 font-semibold shadow"
-  }
->
-  View Details
-</button>
-
-
-
-
-
+                      onClick={() => setSelectedOrder(order)}
+                      className={
+                        darkMode
+                          ? "px-4 py-2 rounded-md border border-orange-500 text-orange-400 hover:bg-orange-500/10 font-semibold"
+                          : "px-4 py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600 font-semibold shadow"
+                      }
+                    >
+                      View Details
+                    </button>
                   </div>
                 </CardContent>
               </Card>
@@ -284,20 +288,46 @@ const Orders = ({ darkMode }) => {
 
           {selectedOrder && (
             <div className="space-y-3 text-sm">
+
               <p><strong>Order ID:</strong> {selectedOrder._id}</p>
               <p><strong>Email:</strong> {selectedOrder.user?.email}</p>
               <p><strong>Total:</strong> ₹{selectedOrder.totalAmount}</p>
 
+              {/* CUSTOMER DETAILS */}
+              <div className="border-t pt-2 space-y-1">
+                <p className="font-semibold mb-1">Customer Information</p>
+
+                <p>
+                  <strong>Name:</strong>{" "}
+                  {selectedOrder.shippingAddress?.fullName || "—"}
+                </p>
+
+                <p>
+                  <strong>Phone:</strong>{" "}
+                  {selectedOrder.shippingAddress?.phone || "—"}
+                </p>
+
+                <p>
+                  <strong>Address:</strong>{" "}
+                  {selectedOrder.shippingAddress
+                    ? `${selectedOrder.shippingAddress.address}, ${selectedOrder.shippingAddress.city}, ${selectedOrder.shippingAddress.state} - ${selectedOrder.shippingAddress.pincode}`
+                    : "—"}
+                </p>
+              </div>
+
+              {/* ITEMS */}
               <div className="border-t pt-2">
                 <p className="font-semibold mb-1">Items</p>
+
                 {selectedOrder.items.map((item, i) => (
                   <div
                     key={i}
                     className="flex justify-between text-xs dark:text-gray-300"
                   >
                     <span>
-                      {item.tyre?.brand} {item.tyre?.size}
+                      {item.tyre?.brand} {item.tyre?.title} ({item.tyre?.size})
                     </span>
+
                     <span>
                       Qty: {item.quantity} × ₹{item.price}
                     </span>
