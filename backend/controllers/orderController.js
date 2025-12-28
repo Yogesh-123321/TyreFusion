@@ -134,22 +134,37 @@ export const createOrder = async (req, res) => {
 ========================================================= */
 export const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
+    let orders = await Order.find({ user: req.user._id })
       .sort({ createdAt: -1 })
       .lean();
 
-    orders.forEach((o) => {
-      o.items = o.items.map((it) => ({
-        ...it,
-        tyre: { ...it.tyre, size: it.tyre?.size || "" },
-      }));
-    });
+    for (let o of orders) {
+      o.items = await Promise.all(
+        o.items.map(async (it) => {
+          let tyre = { ...it.tyre };
+          tyre.size = tyre.size || "";
+
+          if (!tyre.images || tyre.images.length === 0) {
+            try {
+              const t = await Tyre.findById(tyre._id)
+                .select("images")
+                .lean();
+
+              if (t?.images) tyre.images = t.images;
+            } catch {}
+          }
+
+          return { ...it, tyre };
+        })
+      );
+    }
 
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch user orders" });
   }
 };
+
 
 /* =========================================================
    ADMIN: GET ALL ORDERS
