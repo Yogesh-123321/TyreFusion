@@ -58,7 +58,7 @@ export default function Navbar({ toggleTheme, isDarkMode }) {
               isDarkMode ? "text-orange-400" : "text-orange-600"
             } hover:opacity-80 transition`}
           >
-            TyreKing
+            TyreFusion
           </Link>
         </div>
 

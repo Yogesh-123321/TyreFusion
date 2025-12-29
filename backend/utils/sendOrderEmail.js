@@ -21,11 +21,11 @@ export const sendOrderConfirmationEmail = async ({ to, order, user }) => {
     .join("");
 
   await resend.emails.send({
-    from: "TyreKing <orders@tyrefusion.in>",
+    from: "TyreFusion <orders@tyrefusion.in>",
     to,
-    subject: `TyreKing Order Confirmation – ${order._id}`,
+    subject: `TyreFusion Order Confirmation – ${order._id}`,
     html: `
-      <h2>TyreKing Order Confirmation</h2>
+      <h2>TyreFusion Order Confirmation</h2>
       <p>Hello ${customerName},</p>
       <table width="100%">${itemsHtml}</table>
       <p><b>Total:</b> ₹${order.totalAmount}</p>

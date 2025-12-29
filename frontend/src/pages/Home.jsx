@@ -637,29 +637,38 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   /* -------------------------
      Filters & Derived Data
   --------------------------*/
-  const filteredTyres = useMemo(() => {
-    let list = [...tyres];
+ const filteredTyres = useMemo(() => {
+  let list = [...tyres];
 
-    if (brandFilter) {
-      list = list.filter((t) => t.brand === brandFilter);
-    }
-    if (priceFilter) {
-      const maxPrice = Number(priceFilter);
-      if (!Number.isNaN(maxPrice)) {
-        list = list.filter((t) => Number(t.price) <= maxPrice);
-      }
-    }
-    if (warrantyFilter) {
-      const minWarranty = Number(warrantyFilter);
-      if (!Number.isNaN(minWarranty)) {
-        list = list.filter(
-          (t) => Number(t.warrantyMonths || 0) >= minWarranty
-        );
-      }
-    }
+  // Brand filter
+  if (brandFilter) {
+    list = list.filter((t) => t.brand === brandFilter);
+  }
 
-    return list;
-  }, [tyres, brandFilter, priceFilter, warrantyFilter]);
+  // Max price filter
+  if (priceFilter) {
+    const maxPrice = Number(priceFilter);
+    if (!Number.isNaN(maxPrice)) {
+      list = list.filter((t) => Number(t.price) <= maxPrice);
+    }
+  }
+
+  // Warranty filter
+  if (warrantyFilter) {
+    const minWarranty = Number(warrantyFilter);
+    if (!Number.isNaN(minWarranty)) {
+      list = list.filter(
+        (t) => Number(t.warrantyMonths || 0) >= minWarranty
+      );
+    }
+  }
+
+  // ⭐ SORT: LOW → HIGH (price)
+  list.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+
+  return list;
+}, [tyres, brandFilter, priceFilter, warrantyFilter]);
+
 
   const brandOptions = useMemo(
     () => Array.from(new Set(tyres.map((t) => t.brand))).filter(Boolean),
