@@ -5,7 +5,7 @@ export default function Footer() {
   return (
     <footer className="mt-10 border-t border-border bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-        
+
         {/* Brand */}
         <div>
           <h2 className="text-xl font-semibold mb-3">
@@ -24,11 +24,31 @@ export default function Footer() {
           </h3>
 
           <ul className="space-y-2 text-sm">
-            <li><a href="/" className="hover:opacity-100 opacity-80">Home</a></li>
-            <li><a href="/cart" className="hover:opacity-100 opacity-80">Cart</a></li>
-            <li><a href="/login" className="hover:opacity-100 opacity-80">Login</a></li>
-            <li><a href="/my-orders" className="hover:opacity-100 opacity-80">My Orders</a></li>
+            <li>
+              <Link to="/" className="hover:opacity-100 opacity-80">
+                Home
+              </Link>
+            </li>
+
+            <li>
+              <Link to="/cart" className="hover:opacity-100 opacity-80">
+                Cart
+              </Link>
+            </li>
+
+            <li>
+              <Link to="/login" className="hover:opacity-100 opacity-80">
+                Login
+              </Link>
+            </li>
+
+            <li>
+              <Link to="/my-orders" className="hover:opacity-100 opacity-80">
+                My Orders
+              </Link>
+            </li>
           </ul>
+
         </div>
 
         {/* Support */}
@@ -55,14 +75,14 @@ export default function Footer() {
             Have questions? We’re here to help.
           </p>
 
-            <p>Shop No. 1315</p>
-  <p>S.P. Mukherjee Marg</p>
-  <p>Novelty Cinema, Near Old Delhi Railway Station</p>
-  <p>Delhi — 110006</p>
+          <p>Shop No. 1315</p>
+          <p>S.P. Mukherjee Marg</p>
+          <p>Novelty Cinema, Near Old Delhi Railway Station</p>
+          <p>Delhi — 110006</p>
 
-  <p className="mt-3 font-semibold">
-    GST No: <span className="font-normal">07ERTPK1764H1ZA</span>
-  </p>
+          <p className="mt-3 font-semibold">
+            GST No: <span className="font-normal">07ERTPK1764H1ZA</span>
+          </p>
 
 
           <div className="flex gap-4 text-xl opacity-80 hover:opacity-100 transition">

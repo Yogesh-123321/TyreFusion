@@ -82,12 +82,16 @@ function AppContent() {
   );
 }
 
+import ScrollToTop from "@/components/ScrollToTop";
+
 export default function App() {
   return (
     <Router>
       <CartProvider>
+        <ScrollToTop />
         <AppContent />
       </CartProvider>
     </Router>
   );
 }
+
