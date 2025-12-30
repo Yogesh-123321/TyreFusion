@@ -20,36 +20,50 @@ router.get("/by-id/:id", async (req, res) => {
 /* ---------------------------------------------------------
    GET TYRES BY SIZE  (PUBLIC)
 --------------------------------------------------------- */
+/* ---------------------------------------------------------
+   GET TYRES (SIZE + BRAND SEARCH)
+--------------------------------------------------------- */
 router.get("/", async (req, res) => {
   try {
-    const { size } = req.query;
-    if (!size) return res.status(200).json([]);
+    const { size, brand } = req.query;
 
-    const normalizeSize = (s = "") =>
-      s.replace(/\s+/g, "").replace(/[^0-9A-Z/]/gi, "").toUpperCase();
+    // If nothing provided — return empty
+    if (!size && !brand) return res.status(200).json([]);
 
-    const normalized = normalizeSize(size);
+    let query = {};
 
-    const alt1 = normalized.replace("R", " R");
-    const alt2 = normalized.replace("/", " /");
-    const alt3 = normalized.replace(/R(\d+)/, " R $1");
+    // SIZE FILTER (keep your normalization logic)
+    if (size) {
+      const normalizeSize = (s = "") =>
+        s.replace(/\s+/g, "").replace(/[^0-9A-Z/]/gi, "").toUpperCase();
 
-    const variants = [normalized, alt1, alt2, alt3];
-    const regexes = variants.map(
-      (v) => new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-    );
+      const normalized = normalizeSize(size);
 
-    console.log(`🛞 Searching tyres for size: "${normalized}"`);
+      const alt1 = normalized.replace("R", " R");
+      const alt2 = normalized.replace("/", " /");
+      const alt3 = normalized.replace(/R(\d+)/, " R $1");
 
-    const tyresRaw = await Tyre.find({
-      $or: regexes.map((r) => ({ size: r })),
-    })
+      const variants = [normalized, alt1, alt2, alt3];
+      const regexes = variants.map(
+        (v) => new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
+      );
+
+      query.$or = regexes.map((r) => ({ size: r }));
+    }
+
+    // BRAND FILTER (NEW)
+    if (brand) {
+      query.brand = { $regex: brand, $options: "i" };
+    }
+
+    const tyresRaw = await Tyre.find(query)
       .select(
         "sku brand title size price warranty_months stock image images rating features"
-      ) // <-- FEATURES ADDED HERE
+      )
       .limit(200)
       .lean();
 
+    // de-duplicate results
     const seen = new Set();
     const tyres = [];
 
@@ -64,12 +78,15 @@ router.get("/", async (req, res) => {
       }
     }
 
-    return res.status(200).json(tyres);
+    return res.json(tyres);
   } catch (err) {
     console.error("❌ Error in /api/tyres:", err);
-    return res.status(500).json({ message: "Server error while fetching tyres" });
+    return res
+      .status(500)
+      .json({ message: "Server error while fetching tyres" });
   }
 });
+
 
 /* ---------------------------------------------------------
    GET ALL DISTINCT WIDTHS

@@ -12,6 +12,10 @@ import CartPage from "@/pages/CartPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import MyOrdersPage from "@/pages/MyOrdersPage";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
+import Footer from "@/components/Footer";
+import About from "@/pages/About";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 
 // Wrapper to safely use useLocation
 function AppContent() {
@@ -28,7 +32,7 @@ function AppContent() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors">
       {!isAdminRoute && (
         <Navbar
           toggleTheme={toggleTheme}
@@ -37,18 +41,25 @@ function AppContent() {
         />
       )}
 
-      <main className="pt-6">
+      <main className="pt-6 flex-1">
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/my-orders" element={
-            <ProtectedRoute>
-              <MyOrdersPage />
-            </ProtectedRoute>
-          } />
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+
+          <Route
+            path="/my-orders"
+            element={
+              <ProtectedRoute>
+                <MyOrdersPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route
@@ -64,6 +75,9 @@ function AppContent() {
         {/* Global WhatsApp Button */}
         <FloatingWhatsAppButton />
       </main>
+
+      {/* Show footer on all NON-admin pages */}
+      {!isAdminRoute && <Footer />}
     </div>
   );
 }

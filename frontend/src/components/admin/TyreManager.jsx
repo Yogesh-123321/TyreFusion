@@ -18,6 +18,7 @@ const CLOUDINARY_URL =
   (CLOUD_NAME && UPLOAD_PRESET
     ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
     : "");
+
 // FRONTEND-ONLY: Deduplicate tyres by SKU / identity
 const dedupeTyres = (list = []) => {
   const map = new Map();
@@ -33,10 +34,18 @@ export default function TyreManager({ darkMode }) {
   const API_BASE = import.meta.env.VITE_API_BASE;
 
   const [tyres, setTyres] = useState([]);
+
+  // SIZE SEARCH
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimerRef = useRef(null);
   const [sizeQuery, setSizeQuery] = useState("");
+
+  // BRAND SEARCH
+  const [brandQuery, setBrandQuery] = useState("");
+  const [brandResults, setBrandResults] = useState([]);
+  const [brandSearchLoading, setBrandSearchLoading] = useState(false);
+
+  const searchTimerRef = useRef(null);
 
   // ADD TYRE STATE
   const [newTyre, setNewTyre] = useState({
@@ -106,7 +115,6 @@ export default function TyreManager({ darkMode }) {
       });
       const data = await res.json();
       setTyres(dedupeTyres(Array.isArray(data) ? data : []));
-
     } catch (err) {
       console.error("Failed to fetch tyres", err);
     }
@@ -223,6 +231,7 @@ export default function TyreManager({ darkMode }) {
 
       setTyres((prev) => prev.filter((t) => t._id !== id));
       setSearchResults((prev) => prev.filter((t) => t._id !== id));
+      setBrandResults((prev) => prev.filter((t) => t._id !== id));
     } catch (err) {
       alert(err.message);
     }
@@ -285,13 +294,14 @@ export default function TyreManager({ darkMode }) {
       setEditNewFiles([]);
       setEditNewPreviews([]);
       setEditFeatures([]);
+
       await refreshTyres();
     } catch (err) {
       alert(err.message);
     }
   };
 
-  // Search tyres
+  // SEARCH — SIZE
   const runSearch = (query) => {
     if (!query || query.trim().length < 3) {
       setSearchResults([]);
@@ -304,9 +314,8 @@ export default function TyreManager({ darkMode }) {
     fetch(`${API_BASE}/tyres?size=${encodeURIComponent(query)}`)
       .then((r) => r.json())
       .then((data) =>
-  setSearchResults(dedupeTyres(Array.isArray(data) ? data : []))
-)
-
+        setSearchResults(dedupeTyres(Array.isArray(data) ? data : []))
+      )
       .finally(() => setSearchLoading(false));
   };
 
@@ -321,9 +330,37 @@ export default function TyreManager({ darkMode }) {
     runSearch(sizeQuery.trim());
   };
 
+  // SEARCH — BRAND
+  const runBrandSearch = (query) => {
+    if (!query || query.trim().length < 2) {
+      setBrandResults([]);
+      setBrandSearchLoading(false);
+      return;
+    }
+
+    setBrandSearchLoading(true);
+
+    fetch(`${API_BASE}/tyres?brand=${encodeURIComponent(query)}`)
+      .then((r) => r.json())
+      .then((data) =>
+        setBrandResults(dedupeTyres(Array.isArray(data) ? data : []))
+      )
+      .finally(() => setBrandSearchLoading(false));
+  };
+
+  const onBrandInput = (v) => {
+    setBrandQuery(v);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => runBrandSearch(v.trim()), 450);
+  };
+
+  const handleBrandSearchSubmit = (e) => {
+    e?.preventDefault();
+    runBrandSearch(brandQuery.trim());
+  };
+
   return (
     <div className="flex flex-col w-full">
-
       {/* Stock blink CSS */}
       <style>
         {`
@@ -348,8 +385,10 @@ export default function TyreManager({ darkMode }) {
         🛞 Manage Tyres
       </h3>
 
-      {/* SEARCH */}
+      {/* SEARCH SECTION */}
       <section className="mb-6">
+
+        {/* SEARCH BY SIZE */}
         <form
           onSubmit={handleSizeSearchSubmit}
           className="flex flex-col sm:flex-row gap-2"
@@ -364,15 +403,32 @@ export default function TyreManager({ darkMode }) {
           </Button>
         </form>
 
+        {/* SEARCH BY BRAND */}
+        <form
+          onSubmit={handleBrandSearchSubmit}
+          className="flex flex-col sm:flex-row gap-2 mt-4"
+        >
+          <Input
+            placeholder="Search tyres by brand — e.g. MRF, CEAT, Michelin"
+            value={brandQuery}
+            onChange={(e) => onBrandInput(e.target.value)}
+          />
+          <Button className="bg-orange-600 hover:bg-orange-700 text-white">
+            Search
+          </Button>
+        </form>
+
+        {/* SIZE RESULTS */}
         {searchResults.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {searchResults.map((tyre) => (
               <div
                 key={tyre._id}
-                className={`p-4 rounded-lg border ${darkMode
+                className={`p-4 rounded-lg border ${
+                  darkMode
                     ? "bg-black/40 border-orange-700"
                     : "bg-white border-orange-200"
-                  }`}
+                }`}
               >
                 <img
                   src={tyre.images?.[0] || "/tyre.png"}
@@ -383,7 +439,59 @@ export default function TyreManager({ darkMode }) {
                 </h4>
                 <div className="text-gray-400 text-sm">{tyre.size}</div>
 
-                {/* FEATURES Display */}
+                <div className="flex gap-1 flex-wrap mt-2">
+                  {tyre.features?.map((f, i) => (
+                    <span
+                      key={i}
+                      className="text-xs bg-yellow-600 text-white px-2 py-1 rounded"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </div>
+
+                <p className="mt-2 font-bold">₹{tyre.price}</p>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    onClick={() => handleEditClick(tyre)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    onClick={() => handleDelete(tyre._id)}
+                    variant="destructive"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* BRAND RESULTS */}
+        {brandResults.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {brandResults.map((tyre) => (
+              <div
+                key={tyre._id}
+                className={`p-4 rounded-lg border ${
+                  darkMode
+                    ? "bg-black/40 border-orange-700"
+                    : "bg-white border-orange-200"
+                }`}
+              >
+                <img
+                  src={tyre.images?.[0] || "/tyre.png"}
+                  className="w-20 h-20 object-contain mb-2"
+                />
+                <h4 className="font-semibold">
+                  {tyre.brand} {tyre.title}
+                </h4>
+                <div className="text-gray-400 text-sm">{tyre.size}</div>
+
                 <div className="flex gap-1 flex-wrap mt-2">
                   {tyre.features?.map((f, i) => (
                     <span
