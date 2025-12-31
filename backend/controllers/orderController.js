@@ -3,10 +3,8 @@ import Order from "../models/Order.js";
 import Tyre from "../models/Tyre.js";
 import User from "../models/User.js";
 
-// ✅ EXISTING
+// Email utilities
 import { sendOrderConfirmationEmail } from "../utils/sendOrderEmail.js";
-
-// ✅ NEW (ADD THIS)
 import { sendUpiPendingEmail } from "../utils/sendUpiPendingEmail.js";
 
 /* =========================================================
@@ -34,7 +32,7 @@ export const createOrder = async (req, res) => {
     for (const item of rawItems) {
       const tyreObj = item.tyre || {};
 
-      // Fill missing size
+      // Fill missing size (fallback from DB)
       if ((!tyreObj.size || tyreObj.size === "") && tyreObj._id) {
         try {
           const tyreFromDb = await Tyre.findById(String(tyreObj._id)).lean();
@@ -51,6 +49,7 @@ export const createOrder = async (req, res) => {
           const tyreFromDb = await Tyre.findById(tyreObj._id)
             .select("images")
             .lean();
+
           if (Array.isArray(tyreFromDb?.images)) {
             tyreImages = tyreFromDb.images;
           }
@@ -75,18 +74,40 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    /* -------- CALCULATE TOTAL -------- */
-    const totalAmount =
+    /* -------- CALCULATE SUBTOTAL -------- */
+    const subtotal =
       normalizedItems.reduce(
         (acc, it) => acc + it.price * it.quantity,
         0
       ) || 0;
+
+    /* -------- DELIVERY FEE LOGIC -------- */
+    const allowedCities = [
+      "faridabad",
+      "delhi",
+      "gurgaon",
+      "ghaziabad",
+      "palwal",
+    ];
+
+    const userCity = (shippingAddress?.city || "")
+      .trim()
+      .toLowerCase();
+
+    let deliveryFee = 0;
+
+    if (!allowedCities.includes(userCity)) {
+      deliveryFee = 200;
+    }
+
+    const totalAmount = subtotal + deliveryFee;
 
     /* -------- CREATE ORDER -------- */
     const order = await Order.create({
       user: req.user._id,
       items: normalizedItems,
       totalAmount,
+      deliveryFee,
       shippingAddress,
       paymentMode,
       paymentStatus: "PENDING",
@@ -95,12 +116,9 @@ export const createOrder = async (req, res) => {
     /* -------- FETCH USER -------- */
     const user = await User.findById(req.user._id).select("email name");
 
-    /* =====================================================
-       🔥 EMAIL LOGIC FIX (THIS IS THE MAIN CHANGE)
-    ===================================================== */
-
+    /* -------- EMAIL LOGIC -------- */
     if (paymentMode === "COD") {
-      // ✅ COD → send confirmation immediately
+      // COD → confirmation immediately
       sendOrderConfirmationEmail({
         to: user.email,
         order,
@@ -109,7 +127,7 @@ export const createOrder = async (req, res) => {
         console.error("COD email failed:", err.message)
       );
     } else if (paymentMode === "UPI") {
-      // ✅ UPI → send payment pending email ONLY
+      // UPI → payment pending email
       sendUpiPendingEmail({
         to: user.email,
         order,
@@ -165,7 +183,6 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-
 /* =========================================================
    ADMIN: GET ALL ORDERS
 ========================================================= */
@@ -211,6 +228,7 @@ export const getOrderById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch order" });
   }
 };
+
 /* =========================================================
    ADMIN: UPDATE ORDER STATUS
 ========================================================= */
@@ -257,7 +275,7 @@ export const verifyUpiPayment = async (req, res) => {
 
     const user = await User.findById(order.user).select("email name");
 
-    // ✅ FINAL CONFIRMATION EMAIL (ONLY ON VERIFY)
+    // Final confirmation email
     sendOrderConfirmationEmail({
       to: user.email,
       order,

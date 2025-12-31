@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { QRCodeCanvas } from "qrcode.react";
+
+import RAW_CITIES from "@/data/indianCities.json";
 
 export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
@@ -14,8 +16,27 @@ export default function CheckoutPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
   const UPI_ID = import.meta.env.VITE_UPI_ID;
 
+  // ---------- CITY LIST (normalized + unique) ----------
+  const CITY_LIST = Array.from(
+    new Set(
+      RAW_CITIES
+        .map((c) => (c.city || "").trim())
+        .filter(Boolean)
+    )
+  ).sort();
+
+  const SERVICE_CITIES = new Set([
+    "Faridabad",
+    "Delhi",
+    "Gurgaon",
+    "Ghaziabad",
+    "Palwal",
+  ]);
+
+  const EXTRA_DELIVERY_FEE = 200;
+
   const [loading, setLoading] = useState(false);
-  const [paymentMode, setPaymentMode] = useState(""); // COD | UPI
+  const [paymentMode, setPaymentMode] = useState("");
 
   const [form, setForm] = useState({
     fullName: "",
@@ -26,40 +47,74 @@ export default function CheckoutPage() {
     pincode: "",
   });
 
-  const total = cart.reduce(
+  const [filteredCities, setFilteredCities] = useState([]);
+  const [showCityList, setShowCityList] = useState(false);
+
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
+
+  // ---------- CART TOTAL ----------
+  const subtotal = cart.reduce(
     (sum, item) =>
-      sum + Number(item.price || 0) * Number(item.quantity || 1),
+      sum +
+      Number(item.price || 0) * Number(item.quantity || 1),
     0
   );
 
-  /* ----------------------------------------------------
-     NORMALIZE TYRE SOURCE (single source of truth)
-  ---------------------------------------------------- */
+  const total = subtotal + deliveryFee;
+
   const getTyreSource = (item) => {
     if (item.tyre && typeof item.tyre === "object") return item.tyre;
     return item;
   };
 
-  /* ----------------------------------------------------
-     SUBMIT ORDER
-  ---------------------------------------------------- */
+  // ---------- CITY AUTOCOMPLETE ----------
+  function handleCityChange(e) {
+    const value = e.target.value;
+    setForm({ ...form, city: value });
+
+    if (!value) {
+      setFilteredCities([]);
+      return;
+    }
+
+    const matches = CITY_LIST.filter((c) =>
+      c.toLowerCase().includes(value.toLowerCase())
+    ).slice(0, 20);
+
+    setFilteredCities(matches);
+    setShowCityList(true);
+  }
+
+  function selectCity(name) {
+    setForm({ ...form, city: name });
+    setShowCityList(false);
+  }
+
+  // ---------- DELIVERY FEE LOGIC ----------
+  useEffect(() => {
+    if (!form.city) return;
+
+    const cityNormalized = form.city.trim().toLowerCase();
+
+    if (!Array.from(SERVICE_CITIES).map(c => c.toLowerCase()).includes(cityNormalized)) {
+      setDeliveryFee(EXTRA_DELIVERY_FEE);
+      setShowPopup(true);
+    } else {
+      setDeliveryFee(0);
+      setShowPopup(false);
+    }
+
+  }, [form.city]);
+
+  // ---------- SUBMIT ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) return navigate("/login");
 
-    if (!cart.length) {
-      alert("Your cart is empty.");
-      return;
-    }
-
-    if (!paymentMode) {
-      alert("Please select a payment method.");
-      return;
-    }
+    if (!cart.length) return alert("Your cart is empty.");
+    if (!paymentMode) return alert("Please select a payment method.");
 
     setLoading(true);
 
@@ -69,12 +124,14 @@ export default function CheckoutPage() {
 
         return {
           tyre: {
-            _id: tyre._id, // ✅ REQUIRED FOR BACKEND IMAGE FETCH
+            _id: tyre._id,
             brand: tyre.brand || "",
             title: tyre.title || "",
             size: tyre.size || "",
             price: Number(tyre.price || 0),
-            images: Array.isArray(tyre.images) ? tyre.images : [], // ✅ PASS IMAGES
+            images: Array.isArray(tyre.images)
+              ? tyre.images
+              : [],
           },
           quantity: Number(item.quantity || 1),
           price:
@@ -87,10 +144,13 @@ export default function CheckoutPage() {
         `${API_BASE}/orders`,
         {
           items: formattedItems,
+          subtotal,
+          deliveryFee,
           totalAmount: total,
           shippingAddress: form,
           paymentMode,
-          paymentStatus: paymentMode === "COD" ? "PENDING" : "PAID",
+          paymentStatus:
+            paymentMode === "COD" ? "PENDING" : "PAID",
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -106,9 +166,6 @@ export default function CheckoutPage() {
     }
   };
 
-  /* ----------------------------------------------------
-     EMPTY CART STATE
-  ---------------------------------------------------- */
   if (cart.length === 0) {
     return (
       <div className="text-center mt-20 text-gray-500 dark:text-gray-300">
@@ -123,7 +180,14 @@ export default function CheckoutPage() {
         Checkout
       </h1>
 
-      {/* ORDER SUMMARY */}
+      {/* POPUP */}
+      {showPopup && (
+        <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded text-sm text-gray-800">
+          Delivery outside service area — additional ₹200 delivery fee applies.
+        </div>
+      )}
+
+      {/* SUMMARY */}
       <div className="mb-6 p-4 rounded-lg border bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm">
         <h2 className="text-xl font-semibold text-orange-500 mb-3">
           Order Summary
@@ -146,17 +210,17 @@ export default function CheckoutPage() {
                     className="w-14 h-14 object-contain rounded-md bg-white dark:bg-gray-700 border"
                   />
                   <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">
+                    <div className="font-semibold">
                       {tyre.brand} {tyre.title}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                    <div className="text-sm text-gray-600">
                       Size: {tyre.size}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <p className="text-gray-900 dark:text-gray-200">
+                  <p>
                     ₹{tyre.price} × {item.quantity}
                   </p>
                   <p className="text-orange-500 font-semibold">
@@ -168,12 +232,16 @@ export default function CheckoutPage() {
           })}
         </div>
 
-        <div className="text-right text-lg mt-3 font-bold text-orange-600">
-          Total: ₹{total}
+        <div className="text-right mt-3">
+          <div>Subtotal: ₹{subtotal}</div>
+          <div>Delivery Fee: ₹{deliveryFee}</div>
+          <div className="text-lg font-bold text-orange-600">
+            Total: ₹{total}
+          </div>
         </div>
       </div>
 
-      {/* SHIPPING + PAYMENT */}
+      {/* FORM */}
       <form
         onSubmit={handleSubmit}
         className="space-y-6 border p-6 rounded-xl bg-white dark:bg-gray-900 dark:border-gray-700 shadow-sm"
@@ -183,60 +251,127 @@ export default function CheckoutPage() {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.keys(form).map((field) => (
+          {/* Name */}
+          <input
+            type="text"
+            required
+            placeholder="Full Name"
+            value={form.fullName}
+            onChange={(e) =>
+              setForm({ ...form, fullName: e.target.value })
+            }
+            className="w-full p-2 border rounded-md"
+          />
+
+          {/* Phone */}
+          <input
+            type="text"
+            required
+            placeholder="Phone"
+            value={form.phone}
+            onChange={(e) =>
+              setForm({ ...form, phone: e.target.value })
+            }
+            className="w-full p-2 border rounded-md"
+          />
+
+          {/* Address */}
+          <input
+            type="text"
+            required
+            placeholder="Address"
+            value={form.address}
+            onChange={(e) =>
+              setForm({ ...form, address: e.target.value })
+            }
+            className="w-full p-2 border rounded-md"
+          />
+
+          {/* CITY AUTOCOMPLETE */}
+          <div className="relative">
             <input
-              key={field}
               type="text"
               required
-              placeholder={field.replace(/([A-Z])/g, " $1")}
-              value={form[field]}
-              onChange={(e) =>
-                setForm({ ...form, [field]: e.target.value })
+              placeholder="City"
+              value={form.city}
+              onChange={handleCityChange}
+              onFocus={() =>
+                form.city && setShowCityList(true)
               }
-              className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full p-2 border rounded-md"
             />
-          ))}
+
+            {showCityList && filteredCities.length > 0 && (
+              <ul className="absolute bg-white border w-full max-h-48 overflow-y-auto rounded shadow z-50">
+                {filteredCities.map((c) => (
+                  <li
+                    key={c}
+                    className="p-2 cursor-pointer hover:bg-gray-200"
+                    onClick={() => selectCity(c)}
+                  >
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* State */}
+          <input
+            type="text"
+            required
+            placeholder="State"
+            value={form.state}
+            onChange={(e) =>
+              setForm({ ...form, state: e.target.value })
+            }
+            className="w-full p-2 border rounded-md"
+          />
+
+          {/* Pincode */}
+          <input
+            type="text"
+            required
+            placeholder="Pincode"
+            value={form.pincode}
+            onChange={(e) =>
+              setForm({ ...form, pincode: e.target.value })
+            }
+            className="w-full p-2 border rounded-md"
+          />
         </div>
 
         {/* PAYMENT MODE */}
         <div>
-          <h2 className="text-xl font-semibold text-orange-500 mb-3">
+          <h2 className="text-xl font-semibold mb-3 text-orange-500">
             Payment Method
           </h2>
 
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer dark:border-gray-700">
-              <input
-                type="radio"
-                name="payment"
-                value="COD"
-                checked={paymentMode === "COD"}
-                onChange={() => setPaymentMode("COD")}
-              />
-              <span className="font-medium text-gray-900 dark:text-white">
-                Cash on Delivery
-              </span>
-            </label>
+          <label className="flex gap-3 p-3 border rounded-md">
+            <input
+              type="radio"
+              value="COD"
+              checked={paymentMode === "COD"}
+              onChange={() => setPaymentMode("COD")}
+            />
+            Cash on Delivery
+          </label>
 
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer dark:border-gray-700">
-              <input
-                type="radio"
-                name="payment"
-                value="UPI"
-                checked={paymentMode === "UPI"}
-                onChange={() => setPaymentMode("UPI")}
-              />
-              <span className="font-medium text-gray-900 dark:text-white">
-                Pay via UPI
-              </span>
-            </label>
-          </div>
+          <label className="flex gap-3 p-3 border rounded-md mt-2">
+            <input
+              type="radio"
+              value="UPI"
+              checked={paymentMode === "UPI"}
+              onChange={() => setPaymentMode("UPI")}
+            />
+            Pay via UPI
+          </label>
         </div>
 
-        {/* UPI QR */}
+        {/* QR */}
         {paymentMode === "UPI" && (
-          <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <div className="p-4 border rounded-lg bg-gray-50 text-center">
+            <p className="text-sm mb-2">
               Scan to pay ₹{total}
             </p>
 
@@ -245,7 +380,7 @@ export default function CheckoutPage() {
               size={200}
             />
 
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs">
               UPI ID: {UPI_ID}
             </p>
           </div>

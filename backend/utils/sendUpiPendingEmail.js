@@ -1,7 +1,6 @@
 import { Resend } from "resend";
 
 export const sendUpiPendingEmail = async ({ to, order, user }) => {
-  // ⚠️ Important: initialize INSIDE function
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   const customerName =
@@ -9,6 +8,17 @@ export const sendUpiPendingEmail = async ({ to, order, user }) => {
     user?.name ||
     user?.email ||
     "Customer";
+
+  // Calculate subtotal
+  const subtotal =
+    (order.items || []).reduce(
+      (sum, it) =>
+        sum +
+        Number(it.price || 0) * Number(it.quantity || 1),
+      0
+    ) || 0;
+
+  const deliveryFee = order.deliveryFee || 0;
 
   await resend.emails.send({
     from: "TyreFusion <orders@tyrefusion.in>",
@@ -29,12 +39,13 @@ export const sendUpiPendingEmail = async ({ to, order, user }) => {
         </p>
 
         <p>
-          Once the payment is verified, you will receive a final order
-          confirmation email.
+          Once the payment is verified, you will receive a final order confirmation email.
         </p>
 
-        <p style="margin-top:10px;">
-          <b>Total Amount:</b> ₹${order.totalAmount}
+        <p style="margin-top:15px;">
+          <b>Subtotal:</b> ₹${subtotal}<br/>
+          <b>Delivery Fee:</b> ₹${deliveryFee}<br/>
+          <b>Total Payable:</b> ₹${order.totalAmount}
         </p>
 
         <hr style="margin:20px 0;" />
