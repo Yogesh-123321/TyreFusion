@@ -12,12 +12,15 @@ export default function MyOrdersPage() {
 
   useEffect(() => {
     if (!token) return;
+
     axios
       .get(`${API_BASE}/orders/my-orders`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setOrders(res.data))
-      .catch((err) => console.error("Failed to fetch user orders:", err))
+      .catch((err) =>
+        console.error("Failed to fetch user orders:", err)
+      )
       .finally(() => setLoading(false));
   }, [token, API_BASE]);
 
@@ -53,15 +56,34 @@ export default function MyOrdersPage() {
               className="border border-orange-300 dark:border-orange-800 bg-white dark:bg-gray-900 rounded-xl shadow-sm"
             >
               <CardContent className="p-5 space-y-4">
-
                 {/* ORDER HEADER */}
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Order ID: {order._id}
                   </p>
-                  <p className="font-semibold text-lg text-orange-500 mt-1">
-                    Total: ₹{order.totalAmount}
-                  </p>
+
+                  {(() => {
+                    const subtotal =
+                      (order.items || []).reduce(
+                        (sum, it) =>
+                          sum +
+                          Number(it.price || 0) *
+                            Number(it.quantity || 1),
+                        0
+                      );
+
+                    const deliveryFee = order.deliveryFee || 0;
+
+                    return (
+                      <div className="mt-1 text-sm">
+                        <p>Subtotal: ₹{subtotal}</p>
+                        <p>Delivery Fee: ₹{deliveryFee}</p>
+                        <p className="font-semibold text-lg text-orange-500">
+                          Total: ₹{order.totalAmount}
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   <p
                     className={`font-semibold mt-1 ${
@@ -80,7 +102,7 @@ export default function MyOrdersPage() {
                   </p>
                 </div>
 
-                {/* SHIPPING ADDRESS IF AVAILABLE */}
+                {/* SHIPPING ADDRESS */}
                 {order.shippingAddress && (
                   <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                     <h3 className="font-semibold text-orange-500 mb-2">
@@ -99,40 +121,48 @@ export default function MyOrdersPage() {
 
                 {/* ORDERED ITEMS */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-orange-500">Items</h3>
+                  <h3 className="font-semibold text-orange-500">
+                    Items
+                  </h3>
 
                   {order.items.map((item, idx) => {
                     const tyre = item.tyre || {};
-                    const key = item._id || `${order._id}-item-${idx}`;
-                    const size = tyre.size || item.size || "—";
-                    const image =
-  Array.isArray(tyre.images) && tyre.images.length > 0
-    ? tyre.images[0]
-    : "/tyre.png";
-console.log("ORDER ITEM:", item);
-console.log("TYRE OBJECT:", item.tyre);
+                    const key =
+                      item._id || `${order._id}-item-${idx}`;
 
+                    const size =
+                      tyre.size || item.size || "—";
+
+                    const image =
+                      Array.isArray(tyre.images) &&
+                      tyre.images.length > 0
+                        ? tyre.images[0]
+                        : "/tyre.png";
 
                     return (
                       <div
                         key={key}
                         className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-white dark:bg-gray-800"
                       >
-                        {/* Tyre Image */}
+                        {/* IMAGE */}
                         <img
                           src={image}
                           alt={tyre.title}
                           className="w-28 h-28 object-contain border rounded-md bg-white"
                         />
 
-                        {/* Details */}
+                        {/* DETAILS */}
                         <div className="flex-1">
                           <h4 className="font-semibold text-lg">
-                            {tyre.brand || "Tyre"} {tyre.title || ""}
+                            {tyre.brand || "Tyre"}{" "}
+                            {tyre.title || ""}
                           </h4>
 
                           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                            Size: <span className="font-medium">{size}</span>
+                            Size:{" "}
+                            <span className="font-medium">
+                              {size}
+                            </span>
                           </p>
 
                           {tyre.warranty_months && (
@@ -149,7 +179,8 @@ console.log("TYRE OBJECT:", item.tyre);
                           </p>
 
                           <p className="text-orange-500 font-semibold mt-1">
-                            Subtotal: ₹{item.price * item.quantity}
+                            Subtotal: ₹
+                            {item.price * item.quantity}
                           </p>
                         </div>
                       </div>

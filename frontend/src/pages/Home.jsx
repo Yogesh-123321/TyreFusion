@@ -352,7 +352,7 @@ function Combobox({
    Main Home Component
 --------------------------*/
 export default function Home() {
-  const [tab, setTab] = useState("car");
+  const [tab, setTab] = useState("size");
 // quantity per tyre stored globally
 const [quantities, setQuantities] = useState({});
   const [makes, setMakes] = useState([]);
