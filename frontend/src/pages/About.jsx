@@ -33,7 +33,7 @@ export default function About() {
           </p>
 
           <p className="opacity-80 mb-4 leading-relaxed">
-            We source directly from trusted distributors to ensure
+            We source directly from trusted factories to ensure
             authenticity and best prices — removing unnecessary middle layers.
           </p>
 
