@@ -17,9 +17,6 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
-import { fetchVariants, fetchFitments } from "@/api/wheelSize";
-import { fetchMakes, fetchModels, fetchYears } from "@/api/wheelSizeBasic";
-
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 const featureIconMap = {
   "Smooth Ride": "★",
@@ -355,19 +352,9 @@ export default function Home() {
   const [tab, setTab] = useState("size");
 // quantity per tyre stored globally
 const [quantities, setQuantities] = useState({});
-  const [makes, setMakes] = useState([]);
-  const [models, setModels] = useState([]);
-  const [years, setYears] = useState([]);
-  const [variants, setVariants] = useState([]);
-  const [sizes, setSizes] = useState([]);
 
 const navigate = useNavigate();
 const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-
-  const [selectedMake, setSelectedMake] = useState(null);
-  const [selectedModel, setSelectedModel] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
-  const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
 
   const [width, setWidth] = useState("");
@@ -400,20 +387,6 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
     addToCart(tyre);
   };
-
-  /* Load Makes */
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    fetchMakes()
-      .then((data) => {
-        if (!mounted) return;
-        setMakes(data || []);
-      })
-      .catch(() => setError("Failed to fetch car makes"))
-      .finally(() => setLoading(false));
-    return () => (mounted = false);
-  }, []);
 
   /* Car Search Logic */
   async function onMakeSelect(make) {
@@ -610,29 +583,22 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   }
 
   /* Reset */
-  const resetForm = () => {
-    setTab("car");
-    setSelectedMake(null);
-    setSelectedModel(null);
-    setSelectedYear(null);
-    setSelectedVariant(null);
-    setSelectedSize(null);
-    setModels([]);
-    setYears([]);
-    setVariants([]);
-    setSizes([]);
-    setTyres([]);
-    setWidth("");
-    setAspect("");
-    setRim("");
-    setError("");
-    setAiQuery("");
-    setAiResult("");
-    setLoading(false);
-    setBrandFilter("");
-    setPriceFilter("");
-    setWarrantyFilter("");
-  };
+ const resetForm = () => {
+  setTab("size");
+  setSelectedSize(null);
+  setTyres([]);
+  setWidth("");
+  setAspect("");
+  setRim("");
+  setError("");
+  setAiQuery("");
+  setAiResult("");
+  setLoading(false);
+  setBrandFilter("");
+  setPriceFilter("");
+  setWarrantyFilter("");
+};
+
 
   /* -------------------------
      Filters & Derived Data
@@ -696,15 +662,6 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
         {/* Tabs */}
         <div className="flex items-center gap-3 justify-start md:justify-center overflow-x-auto pb-2">
-          <button
-            onClick={() => setTab("car")}
-            className={`px-4 py-2 rounded-md whitespace-nowrap ${tab === "car"
-                ? "bg-orange-600 text-white"
-                : "bg-gray-100 dark:bg-gray-800"
-              }`}
-          >
-            Search by Car
-          </button>
 
           <button
             onClick={() => setTab("size")}
@@ -726,20 +683,7 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
             Search by AI
           </button>
 
-          <div className="ml-auto md:ml-4 flex items-center gap-2">
-            <button
-              onClick={resetForm}
-              className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800 text-sm whitespace-nowrap"
-            >
-              Reset
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-3 py-2 rounded-md bg-red-500 text-white text-sm whitespace-nowrap"
-            >
-              Reset & Reload
-            </button>
-          </div>
+          
         </div>
 
         <Card className="p-4 sm:p-6 bg-white dark:bg-gray-900 border shadow-sm">
@@ -755,90 +699,7 @@ const [loginDialogOpen, setLoginDialogOpen] = useState(false);
           {/* -------------------------
               CAR SEARCH
           -------------------------- */}
-          {tab === "car" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Make</label>
-                  <Combobox
-                    items={makes}
-                    value={selectedMake}
-                    onChange={onMakeSelect}
-                    placeholder="Select Make"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Model</label>
-                  <Combobox
-                    items={models}
-                    value={selectedModel}
-                    onChange={onModelSelect}
-                    placeholder="Select Model"
-                    disabled={!selectedMake}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Year</label>
-                  <Combobox
-                    items={years}
-                    value={selectedYear}
-                    onChange={onYearSelect}
-                    placeholder="Select Year"
-                    itemToString={(y) => String(y)}
-                    disabled={!selectedModel}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Variant
-                  </label>
-                  <Combobox
-                    items={variants.map((v) => ({
-                      label: v.name + (v.fuel ? ` (${v.fuel})` : ""),
-                      value: v.slug,
-                    }))}
-                    value={
-                      variants.find((v) => v.slug === selectedVariant) || null
-                    }
-                    itemToString={(it) => (it ? it.label : "")}
-                    onChange={(sel) => onVariantSelect(sel?.value)}
-                    placeholder="Select Variant"
-                    disabled={!selectedYear}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-2">
-                  Tyre Sizes
-                </label>
-                {sizes.length === 0 ? (
-                  <div className="text-sm text-gray-500 italic">
-                    Select variant to view sizes
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {sizes.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => onSizeSelect(s)}
-                        className={`px-3 py-1 rounded-md text-sm ${selectedSize === s
-                            ? "bg-orange-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800"
-                          }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
+          
           {/* -------------------------
               SIZE SEARCH
           -------------------------- */}

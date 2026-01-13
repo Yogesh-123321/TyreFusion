@@ -10,8 +10,8 @@ import authRoutes from "./routes/authRoutes.js";
 import tyreRoutes from "./routes/tyreRoutes.js";
 import carRoutes from "./routes/carRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import wheelFitmentRoute from "./routes/wheelFitmentRoute.js";
-import wheelSizeRoutes from "./routes/wheelsizeRoutes.js";
+// import wheelFitmentRoute from "./routes/wheelFitmentRoute.js";
+// import wheelSizeRoutes from "./routes/wheelsizeRoutes.js";
 import aiSearchRoute from "./routes/aiSearch.js";
 import testEmailRoute from "./routes/testEmail.js";
 
@@ -19,7 +19,7 @@ console.log("EMAIL_USER =", process.env.EMAIL_USER);
 console.log("EMAIL_PASS =", process.env.EMAIL_PASS ? "SET" : "MISSING");
 console.log("🔑 RESEND_API_KEY =", process.env.RESEND_API_KEY);
 
-console.log("🔑 Loaded Wheel-Size key:", process.env.WHEELSIZE_API_KEY);
+// console.log("🔑 Loaded Wheel-Size key:", process.env.WHEELSIZE_API_KEY);
 console.log("🔑 Loaded OpenRouter key:", process.env.OPENROUTER_API_KEY);
 
 const app = express();
@@ -35,8 +35,8 @@ app.use("/api/tyres", tyreRoutes);
 app.use("/api/makes", carRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/wheels", wheelFitmentRoute);
-app.use("/api/wheelsize", wheelSizeRoutes);
+// app.use("/api/wheels", wheelFitmentRoute);
+// app.use("/api/wheelsize", wheelSizeRoutes);
 app.use("/api/ai-search", aiSearchRoute);
 app.use("/api/test", testEmailRoute);
 
