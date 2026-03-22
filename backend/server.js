@@ -25,9 +25,40 @@ console.log("🔑 Loaded OpenRouter key:", process.env.OPENROUTER_API_KEY);
 const app = express();
 
 // Middlewares
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const allowedOrigins = [
+  "https://www.tyrefusion.in",
+  "https://tyrefusion.in",
+  "http://localhost:5173"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (Postman, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
+
+// Health check routes
+app.get("/", (req, res) => {
+  res.send("TyreFusion Backend is running 🚀");
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Routes
 app.use("/api/auth", authRoutes);

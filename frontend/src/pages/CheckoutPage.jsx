@@ -135,8 +135,7 @@ export default function CheckoutPage() {
           },
           quantity: Number(item.quantity || 1),
           price:
-            Number(tyre.price || 0) *
-            Number(item.quantity || 1),
+            Number(tyre.price || 0),
         };
       });
 
